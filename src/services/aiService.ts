@@ -40,8 +40,9 @@ export async function generateChatResponse(
     Responde siempre en español.
   `;
 
-  // Convert messages to OpenAI format
-  const history = messages.map((msg) => ({
+  // Optimización de tokens: Solo enviamos los últimos 10 mensajes para ahorrar presupuesto
+  const MAX_HISTORY = 10;
+  const history = messages.slice(-MAX_HISTORY).map((msg) => ({
     role: msg.role === "user" ? ("user" as const) : ("assistant" as const),
     content: msg.content,
   }));
@@ -53,8 +54,8 @@ export async function generateChatResponse(
         { role: "system", content: systemInstruction },
         ...history,
       ],
-      temperature: 0.9,
-      max_tokens: 2000,
+      temperature: 1.3,
+      max_tokens: 800, // Reducido de 2000 para mayor eficiencia
     });
 
     return response.choices[0].message.content || "Lo siento, no pude procesar eso.";
