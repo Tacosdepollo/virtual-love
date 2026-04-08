@@ -1,9 +1,9 @@
 import React from "react";
-import { ChatSession } from "@/types";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Plus, Trash2, Settings } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChatSession } from "../types";
+import { Button } from "./ui/button";
+import { ScrollArea } from "./ui/scroll-area";
+import { MessageSquare, Plus, Trash2, Settings, Heart, X } from "lucide-react";
+import { cn } from "../lib/utils";
 
 interface SidebarProps {
   sessions: ChatSession[];
@@ -12,6 +12,8 @@ interface SidebarProps {
   onNewSession: () => void;
   onDeleteSession: (id: string) => void;
   onOpenSettings: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export default function Sidebar({
@@ -21,18 +23,42 @@ export default function Sidebar({
   onNewSession,
   onDeleteSession,
   onOpenSettings,
+  isOpen,
+  onClose,
 }: SidebarProps) {
   return (
-    <div className="w-72 h-full bg-zinc-950 border-r border-zinc-800 flex flex-col">
-      <div className="p-4 space-y-4">
-        <Button
-          onClick={onNewSession}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Nueva Amiga
-        </Button>
-      </div>
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <div className={cn(
+        "fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col transition-transform duration-300 md:relative md:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-4 flex items-center justify-between md:hidden">
+          <div className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-[var(--brand)]" />
+            <span className="font-bold">Amiga Virtual</span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <Button
+            onClick={onNewSession}
+            className="w-full bg-[var(--brand)] hover:opacity-90 text-white gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva Amiga
+          </Button>
+        </div>
 
       <ScrollArea className="flex-1 px-2">
         <div className="space-y-1">
@@ -45,7 +71,7 @@ export default function Sidebar({
               className={cn(
                 "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors",
                 currentSessionId === session.id
-                  ? "bg-zinc-800 text-zinc-100"
+                  ? "bg-[var(--brand)]/20 text-zinc-100 border border-[var(--brand)]/30"
                   : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
               )}
               onClick={() => onSelectSession(session.id)}
@@ -70,12 +96,13 @@ export default function Sidebar({
         <Button
           variant="ghost"
           onClick={onOpenSettings}
-          className="w-full justify-start gap-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+          className="w-full justify-start gap-2 text-zinc-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10"
         >
           <Settings className="w-4 h-4" />
           Configuración Global
         </Button>
       </div>
     </div>
+    </>
   );
 }

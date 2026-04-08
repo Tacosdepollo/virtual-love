@@ -13,10 +13,13 @@ export interface Personality {
   customInstructions: string;
 }
 
+export type AppTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';
+
 export interface ChatSession {
   id: string;
   title: string;
   personality: Personality;
   messages: Message[];
+  theme?: AppTheme;
   lastUpdated: number;
 }

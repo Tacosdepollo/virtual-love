@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Message, Personality, ChatSession } from "@/types";
-import { generateChatResponse } from "@/services/aiService";
-import Sidebar from "@/components/Sidebar";
-import ChatWindow from "@/components/ChatWindow";
-import PersonalitySettings from "@/components/PersonalitySettings";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Message, Personality, ChatSession } from "./types";
+import { generateChatResponse } from "./services/aiService";
+import Sidebar from "./components/Sidebar";
+import ChatWindow from "./components/ChatWindow";
+import PersonalitySettings from "./components/PersonalitySettings";
+import { Dialog, DialogContent } from "./components/ui/dialog";
+import { Button } from "./components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Heart } from "lucide-react";
+import { Sparkles, Heart, Menu, X } from "lucide-react";
+import { AppTheme } from "./types";
 
 const DEFAULT_PERSONALITY: Personality = {
   name: "Luna",
@@ -22,6 +24,7 @@ export default function App() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load sessions from localStorage
@@ -40,6 +43,7 @@ export default function App() {
         title: "Luna",
         personality: DEFAULT_PERSONALITY,
         messages: [],
+        theme: 'indigo',
         lastUpdated: Date.now(),
       };
       setSessions([initialSession]);
@@ -110,6 +114,7 @@ export default function App() {
       title: "Nueva Amiga",
       personality: { ...DEFAULT_PERSONALITY, name: "Nueva Amiga" },
       messages: [],
+      theme: 'indigo',
       lastUpdated: Date.now(),
     };
     setSessions([newSession, ...sessions]);
@@ -125,11 +130,11 @@ export default function App() {
     }
   };
 
-  const handleSavePersonality = (personality: Personality) => {
+  const handleSavePersonality = (personality: Personality, theme?: AppTheme) => {
     setSessions((prev) =>
       prev.map((s) =>
         s.id === currentSessionId
-          ? { ...s, personality, title: personality.name }
+          ? { ...s, personality, title: personality.name, theme: theme || s.theme }
           : s
       )
     );
@@ -137,23 +142,53 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+    <div 
+      className="flex h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+      data-theme={currentSession?.theme || 'indigo'}
+    >
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--brand)]/10 blur-[120px] rounded-full transition-colors duration-500" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full" />
       </div>
 
       <Sidebar
         sessions={sessions}
         currentSessionId={currentSessionId}
-        onSelectSession={setCurrentSessionId}
-        onNewSession={handleNewSession}
+        onSelectSession={(id) => {
+          setCurrentSessionId(id);
+          setIsSidebarOpen(false);
+        }}
+        onNewSession={() => {
+          handleNewSession();
+          setIsSidebarOpen(false);
+        }}
         onDeleteSession={handleDeleteSession}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => {
+          setIsSettingsOpen(true);
+          setIsSidebarOpen(false);
+        }}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
-      <main className="flex-1 relative flex flex-col p-4 lg:p-6 overflow-hidden">
+      <main className="flex-1 relative flex flex-col p-2 md:p-4 lg:p-6 overflow-hidden">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between p-2 md:hidden border-b border-zinc-800 mb-2">
+          <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
+            <Menu className="w-6 h-6" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-[var(--brand)] transition-colors" />
+            <span className="font-bold text-sm truncate max-w-[150px]">
+              {currentSession?.title || "Amiga Virtual"}
+            </span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
+            <Sparkles className="w-5 h-5 text-[var(--brand)] transition-colors opacity-80" />
+          </Button>
+        </div>
+
         <AnimatePresence mode="wait">
           {currentSession ? (
             <motion.div
@@ -173,8 +208,8 @@ export default function App() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
               <div className="relative">
-                <Heart className="w-20 h-20 text-indigo-500/20 animate-pulse" />
-                <Sparkles className="absolute top-0 right-0 w-8 h-8 text-indigo-400 animate-bounce" />
+                <Heart className="w-20 h-20 text-[var(--brand)]/20 animate-pulse transition-colors" />
+                <Sparkles className="absolute top-0 right-0 w-8 h-8 text-[var(--brand)] animate-bounce transition-colors" />
               </div>
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Bienvenido a Amiga Virtual</h1>
@@ -184,7 +219,7 @@ export default function App() {
               </div>
               <button
                 onClick={handleNewSession}
-                className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-full font-bold transition-all transform hover:scale-105 shadow-lg shadow-indigo-500/20"
+                className="px-8 py-4 bg-[var(--brand)] hover:opacity-90 rounded-full font-bold transition-all transform hover:scale-105 shadow-lg shadow-[var(--brand)]/20"
               >
                 Empezar ahora
               </button>
@@ -194,10 +229,11 @@ export default function App() {
       </main>
 
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-2xl p-0 bg-transparent border-none">
+        <DialogContent className="max-w-2xl p-0 bg-transparent border-none w-[95vw] md:w-full">
           {currentSession && (
             <PersonalitySettings
               personality={currentSession.personality}
+              theme={currentSession.theme || 'indigo'}
               onSave={handleSavePersonality}
             />
           )}
