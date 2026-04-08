@@ -36,9 +36,9 @@ export default function ChatWindow({ messages, personality, onSendMessage, isLoa
   };
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto bg-zinc-950/30 backdrop-blur-sm rounded-2xl border border-zinc-800/50 overflow-hidden shadow-2xl">
+    <div className="flex flex-col flex-1 min-h-0 max-w-4xl mx-auto w-full bg-zinc-950/30 backdrop-blur-sm rounded-2xl border border-zinc-800/50 overflow-hidden shadow-2xl">
       {/* Header - Hidden on mobile as App.tsx provides a mobile header */}
-      <div className="hidden md:flex p-4 border-b border-zinc-800 bg-zinc-900/50 items-center justify-between">
+      <div className="hidden md:flex p-4 border-b border-zinc-800 bg-zinc-900/50 items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 border-2 border-[var(--brand)]/50">
             <AvatarFallback className="bg-[var(--brand)] text-white">
@@ -56,7 +56,7 @@ export default function ChatWindow({ messages, personality, onSendMessage, isLoa
       </div>
 
       {/* Messages Area */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4 lg:p-6">
+      <ScrollArea ref={scrollRef} className="flex-1 min-h-0 p-4 lg:p-6">
         <div className="space-y-6">
           <AnimatePresence initial={false}>
             {messages.length === 0 && (
@@ -137,7 +137,7 @@ export default function ChatWindow({ messages, personality, onSendMessage, isLoa
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="p-4 bg-zinc-900/80 backdrop-blur-md border-t border-zinc-800">
+      <div className="p-4 bg-zinc-900/80 backdrop-blur-md border-t border-zinc-800 shrink-0">
         <div className="flex gap-2 max-w-3xl mx-auto">
           <Input
             value={input}

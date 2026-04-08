@@ -143,7 +143,7 @@ export default function App() {
 
   return (
     <div 
-      className="flex h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+      className="flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
       data-theme={currentSession?.theme || 'indigo'}
     >
       {/* Background Effects */}
@@ -196,7 +196,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              className="flex-1 h-full"
+              className="flex-1 flex flex-col min-h-0"
             >
               <ChatWindow
                 messages={currentSession.messages}
