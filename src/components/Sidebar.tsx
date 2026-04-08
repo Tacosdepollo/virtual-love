@@ -1,13 +1,15 @@
 import React from "react";
-import { ChatSession } from "../types";
+import { ChatSession, Language } from "../types";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 import { MessageSquare, Plus, Trash2, Settings, Heart, X } from "lucide-react";
 import { cn } from "../lib/utils";
+import { t } from "../translations";
 
 interface SidebarProps {
   sessions: ChatSession[];
   currentSessionId: string;
+  language: Language;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   onDeleteSession: (id: string) => void;
@@ -19,6 +21,7 @@ interface SidebarProps {
 export default function Sidebar({
   sessions,
   currentSessionId,
+  language,
   onSelectSession,
   onNewSession,
   onDeleteSession,
@@ -43,7 +46,7 @@ export default function Sidebar({
         <div className="p-4 flex items-center justify-between md:hidden">
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-[var(--brand)]" />
-            <span className="font-bold">Amiga Virtual</span>
+            <span className="font-bold">{t('appName', language)}</span>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="w-5 h-5" />
@@ -56,14 +59,14 @@ export default function Sidebar({
             className="w-full bg-[var(--brand)] hover:opacity-90 text-white gap-2"
           >
             <Plus className="w-4 h-4" />
-            Nueva Amiga
+            {t('newChat', language)}
           </Button>
         </div>
 
       <ScrollArea className="flex-1 px-2">
         <div className="space-y-1">
           <h3 className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            Conversaciones
+            {t('sidebarTitle', language)}
           </h3>
           {sessions.map((session) => (
             <div
@@ -99,7 +102,7 @@ export default function Sidebar({
           className="w-full justify-start gap-2 text-zinc-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10"
         >
           <Settings className="w-4 h-4" />
-          Configuración Global
+          {t('settings', language)}
         </Button>
       </div>
     </div>

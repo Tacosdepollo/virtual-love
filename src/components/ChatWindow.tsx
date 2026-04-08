@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Message, Personality } from "../types";
+import { Message, Personality, Language } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
@@ -7,15 +7,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Send, User, Bot, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
+import { t } from "../translations";
 
 interface ChatWindowProps {
   messages: Message[];
   personality: Personality;
+  language: Language;
   onSendMessage: (content: string) => void;
   isLoading: boolean;
 }
 
-export default function ChatWindow({ messages, personality, onSendMessage, isLoading }: ChatWindowProps) {
+export default function ChatWindow({ messages, personality, language, onSendMessage, isLoading }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +51,7 @@ export default function ChatWindow({ messages, personality, onSendMessage, isLoa
             <h2 className="font-bold text-zinc-100">{personality.name}</h2>
             <p className="text-xs text-[var(--brand)] flex items-center gap-1 opacity-80">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              En línea
+              {t('online', language)}
             </p>
           </div>
         </div>
@@ -69,9 +71,9 @@ export default function ChatWindow({ messages, personality, onSendMessage, isLoa
                   <Bot className="w-8 h-8 text-[var(--brand)] opacity-80" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-zinc-200">¡Saluda a {personality.name}!</h3>
+                  <h3 className="text-xl font-semibold text-zinc-200">{t('greet', language, { name: personality.name })}</h3>
                   <p className="text-zinc-400 max-w-xs mx-auto text-sm">
-                    Tu nueva amiga virtual está lista para charlar. ¿De qué quieres hablar hoy?
+                    {t('greetSub', language, { name: personality.name })}
                   </p>
                 </div>
               </motion.div>
@@ -143,7 +145,7 @@ export default function ChatWindow({ messages, personality, onSendMessage, isLoa
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder={`Escribe un mensaje a ${personality.name}...`}
+            placeholder={t('inputPlaceholder', language, { name: personality.name })}
             className="bg-zinc-800 border-zinc-700 focus:ring-[var(--brand)] text-zinc-100 h-12"
             disabled={isLoading}
           />

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { Message, Personality } from "../types";
+import { Message, Personality, Language } from "../types";
 
 // Note: In this environment, we use process.env for server-side secrets.
 // For client-side, we use import.meta.env.VITE_...
@@ -21,13 +21,17 @@ const openai = new OpenAI({
 
 export async function generateChatResponse(
   messages: Message[],
-  personality: Personality
+  personality: Personality,
+  language: Language = 'es'
 ): Promise<string> {
   if (!apiKey) {
-    return "Error: No se ha configurado la API Key de DeepSeek. Por favor, añádela como VITE_DEEPSEEK_API_KEY en los secretos.";
+    const errorMsg = language === 'es' 
+      ? "Error: No se ha configurado la API Key de DeepSeek. Por favor, añádela como VITE_DEEPSEEK_API_KEY en los secretos."
+      : "Error: DeepSeek API Key not configured. Please add it as VITE_DEEPSEEK_API_KEY in secrets.";
+    return errorMsg;
   }
 
-  const systemInstruction = `
+  const systemInstruction = language === 'es' ? `
     Eres ${personality.name}.
     Descripción: ${personality.description}
     Rasgos de personalidad: ${personality.traits.join(", ")}
@@ -38,6 +42,17 @@ export async function generateChatResponse(
     Sé natural, expresiva y mantén la coherencia con tu personalidad. 
     Eres libre de expresar emociones, opiniones y tener una personalidad distintiva.
     Responde siempre en español.
+  ` : `
+    You are ${personality.name}.
+    Description: ${personality.description}
+    Personality traits: ${personality.traits.join(", ")}
+    Communication style: ${personality.style}
+    Additional instructions: ${personality.customInstructions}
+
+    IMPORTANT: Act as a real virtual friend. Do not say you are an AI unless absolutely necessary.
+    Be natural, expressive, and maintain consistency with your personality.
+    You are free to express emotions, opinions, and have a distinctive personality.
+    Always respond in English.
   `;
 
   // Optimización de tokens: Solo enviamos los últimos 10 mensajes para ahorrar presupuesto
@@ -58,12 +73,16 @@ export async function generateChatResponse(
       max_tokens: 800, // Reducido de 2000 para mayor eficiencia
     });
 
-    return response.choices[0].message.content || "Lo siento, no pude procesar eso.";
+    return response.choices[0].message.content || (language === 'es' ? "Lo siento, no pude procesar eso." : "Sorry, I couldn't process that.");
   } catch (error: any) {
     console.error("DeepSeek API Error:", error);
     if (error?.status === 401) {
-      return "Error de autenticación: La API Key de DeepSeek es inválida.";
+      return language === 'es' 
+        ? "Error de autenticación: La API Key de DeepSeek es inválida."
+        : "Authentication error: Invalid DeepSeek API Key.";
     }
-    return "Hubo un error al conectar con mi cerebro artificial (DeepSeek). ¿Podrías intentarlo de nuevo?";
+    return language === 'es'
+      ? "Hubo un error al conectar con mi cerebro artificial (DeepSeek). ¿Podrías intentarlo de nuevo?"
+      : "There was an error connecting to my artificial brain (DeepSeek). Could you try again?";
   }
 }

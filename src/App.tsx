@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Message, Personality, ChatSession } from "./types";
+import { Message, Personality, ChatSession, Language, AppTheme } from "./types";
 import { generateChatResponse } from "./services/aiService";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Heart, Menu, X } from "lucide-react";
-import { AppTheme } from "./types";
+import { t } from "./translations";
 
 const DEFAULT_PERSONALITY: Personality = {
   name: "Luna",
@@ -18,17 +18,22 @@ const DEFAULT_PERSONALITY: Personality = {
   customInstructions: "Sé lo más humana posible. No tengas miedo de bromear o ser directa.",
 };
 
-const STORAGE_KEY = "amiga_virtual_sessions";
+const STORAGE_KEY = "gams_sessions";
+const LANG_STORAGE_KEY = "gams_language";
 
 export default function App() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [language, setLanguage] = useState<Language>('es');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load sessions from localStorage
+  // Load state from localStorage
   useEffect(() => {
+    const savedLang = localStorage.getItem(LANG_STORAGE_KEY) as Language;
+    if (savedLang) setLanguage(savedLang);
+
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
@@ -58,6 +63,11 @@ export default function App() {
     }
   }, [sessions]);
 
+  // Save language to localStorage
+  useEffect(() => {
+    localStorage.setItem(LANG_STORAGE_KEY, language);
+  }, [language]);
+
   const currentSession = sessions.find((s) => s.id === currentSessionId);
 
   const handleSendMessage = async (content: string) => {
@@ -84,7 +94,8 @@ export default function App() {
     try {
       const aiResponseContent = await generateChatResponse(
         updatedMessages,
-        currentSession.personality
+        currentSession.personality,
+        language
       );
 
       const aiMessage: Message = {
@@ -109,10 +120,11 @@ export default function App() {
   };
 
   const handleNewSession = () => {
+    const name = language === 'es' ? "Nueva Amiga" : "New Friend";
     const newSession: ChatSession = {
       id: crypto.randomUUID(),
-      title: "Nueva Amiga",
-      personality: { ...DEFAULT_PERSONALITY, name: "Nueva Amiga" },
+      title: name,
+      personality: { ...DEFAULT_PERSONALITY, name },
       messages: [],
       theme: 'indigo',
       lastUpdated: Date.now(),
@@ -123,6 +135,7 @@ export default function App() {
   };
 
   const handleDeleteSession = (id: string) => {
+    if (!window.confirm(t('deleteConfirm', language))) return;
     const filtered = sessions.filter((s) => s.id !== id);
     setSessions(filtered);
     if (currentSessionId === id && filtered.length > 0) {
@@ -130,7 +143,8 @@ export default function App() {
     }
   };
 
-  const handleSavePersonality = (personality: Personality, theme?: AppTheme) => {
+  const handleSavePersonality = (personality: Personality, theme: AppTheme, newLang: Language) => {
+    setLanguage(newLang);
     setSessions((prev) =>
       prev.map((s) =>
         s.id === currentSessionId
@@ -155,6 +169,7 @@ export default function App() {
       <Sidebar
         sessions={sessions}
         currentSessionId={currentSessionId}
+        language={language}
         onSelectSession={(id) => {
           setCurrentSessionId(id);
           setIsSidebarOpen(false);
@@ -181,7 +196,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-[var(--brand)] transition-colors" />
             <span className="font-bold text-sm truncate max-w-[150px]">
-              {currentSession?.title || "Amiga Virtual"}
+              {currentSession?.title || t('appName', language)}
             </span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
@@ -201,6 +216,7 @@ export default function App() {
               <ChatWindow
                 messages={currentSession.messages}
                 personality={currentSession.personality}
+                language={language}
                 onSendMessage={handleSendMessage}
                 isLoading={isLoading}
               />
@@ -212,16 +228,16 @@ export default function App() {
                 <Sparkles className="absolute top-0 right-0 w-8 h-8 text-[var(--brand)] animate-bounce transition-colors" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">Bienvenido a Amiga Virtual</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('welcome', language)}</h1>
                 <p className="text-zinc-400 max-w-md">
-                  Crea una personalidad única y empieza a charlar. Tu nueva amiga te está esperando.
+                  {t('welcomeSub', language)}
                 </p>
               </div>
               <button
                 onClick={handleNewSession}
                 className="px-8 py-4 bg-[var(--brand)] hover:opacity-90 rounded-full font-bold transition-all transform hover:scale-105 shadow-lg shadow-[var(--brand)]/20"
               >
-                Empezar ahora
+                {t('startNow', language)}
               </button>
             </div>
           )}
@@ -234,6 +250,7 @@ export default function App() {
             <PersonalitySettings
               personality={currentSession.personality}
               theme={currentSession.theme || 'indigo'}
+              language={language}
               onSave={handleSavePersonality}
             />
           )}
