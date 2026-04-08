@@ -1,0 +1,5 @@
+{
+  "name": "Amiga Virtual",
+  "description": "Una aplicación de amiga virtual personalizable con historial de chat y personalidad configurable.",
+  "requestFramePermissions": []
+}
