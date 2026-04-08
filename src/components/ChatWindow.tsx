@@ -8,6 +8,7 @@ import { Send, User, Bot, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
+import Markdown from "react-markdown";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -48,7 +49,7 @@ export default function ChatWindow({ messages, personality, language, onSendMess
             </AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="font-bold text-zinc-100">{personality.name}</h2>
+            <h2 className="font-bold text-zinc-100 font-heading">{personality.name}</h2>
             <p className="text-xs text-[var(--brand)] flex items-center gap-1 opacity-80">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               {t('online', language)}
@@ -71,7 +72,7 @@ export default function ChatWindow({ messages, personality, language, onSendMess
                   <Bot className="w-8 h-8 text-[var(--brand)] opacity-80" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-zinc-200">{t('greet', language, { name: personality.name })}</h3>
+                  <h3 className="text-xl font-semibold text-zinc-200 font-heading">{t('greet', language, { name: personality.name })}</h3>
                   <p className="text-zinc-400 max-w-xs mx-auto text-sm">
                     {t('greetSub', language, { name: personality.name })}
                   </p>
@@ -106,12 +107,12 @@ export default function ChatWindow({ messages, personality, language, onSendMess
                   msg.role === "user" ? "items-end" : "items-start"
                 )}>
                   <div className={cn(
-                    "px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm",
+                    "px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm markdown-body",
                     msg.role === "user" 
                       ? "bg-[var(--brand)] text-white rounded-tr-none" 
                       : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-zinc-700/50"
                   )}>
-                    {msg.content}
+                    <Markdown>{msg.content}</Markdown>
                   </div>
                   <span className="text-[10px] text-zinc-500 px-1">
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

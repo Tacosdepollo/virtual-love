@@ -46,7 +46,7 @@ export default function PersonalitySettings({ personality, theme, language, onSa
   return (
     <Card className="w-full max-w-2xl mx-auto border-none shadow-2xl bg-zinc-950/50 backdrop-blur-xl text-zinc-100 max-h-[90vh] flex flex-col">
       <CardHeader className="shrink-0">
-        <CardTitle className="flex items-center gap-2 text-2xl font-bold">
+        <CardTitle className="flex items-center gap-2 text-2xl font-bold font-heading">
           <Sparkles className="w-6 h-6 text-[var(--brand)]" />
           {selectedLanguage === 'es' ? 'Configurar Personalidad' : 'Configure Personality'}
         </CardTitle>

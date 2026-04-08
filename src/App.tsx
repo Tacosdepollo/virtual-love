@@ -228,7 +228,7 @@ export default function App() {
                 <Sparkles className="absolute top-0 right-0 w-8 h-8 text-[var(--brand)] animate-bounce transition-colors" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">{t('welcome', language)}</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-heading">{t('welcome', language)}</h1>
                 <p className="text-zinc-400 max-w-md">
                   {t('welcomeSub', language)}
                 </p>
