@@ -6,7 +6,7 @@ import { Textarea } from "./ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
-import { X, Plus, Sparkles, Palette, Check, Globe } from "lucide-react";
+import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 
@@ -15,6 +15,8 @@ interface PersonalitySettingsProps {
   theme: AppTheme;
   language: Language;
   onSave: (personality: Personality, theme: AppTheme, language: Language) => void;
+  onDelete?: () => void;
+  isCreator?: boolean;
 }
 
 const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [
@@ -26,11 +28,12 @@ const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[
   { id: 'violet', color: 'bg-violet-500', name: { es: 'Violeta', en: 'Violet' } },
 ];
 
-export default function PersonalitySettings({ personality, theme, language, onSave }: PersonalitySettingsProps) {
+export default function PersonalitySettings({ personality, theme, language, onSave, onDelete, isCreator }: PersonalitySettingsProps) {
   const [edited, setEdited] = useState<Personality>(personality);
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(theme);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
   const [newTrait, setNewTrait] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleAddTrait = () => {
     if (newTrait.trim() && !edited.traits.includes(newTrait.trim())) {
@@ -70,25 +73,36 @@ export default function PersonalitySettings({ personality, theme, language, onSa
           </div>
 
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              {t('language', selectedLanguage)}
-            </Label>
-            <div className="flex gap-2">
-              {(['es', 'en'] as Language[]).map((lang) => (
-                <Button
-                  key={lang}
-                  variant={selectedLanguage === lang ? "default" : "outline"}
-                  onClick={() => setSelectedLanguage(lang)}
-                  className={cn(
-                    "flex-1",
-                    selectedLanguage === lang ? "bg-[var(--brand)]" : "border-zinc-800"
-                  )}
-                >
-                  {lang === 'es' ? 'Español' : 'English'}
-                </Button>
-              ))}
-            </div>
+            <Label htmlFor="avatarUrl">Avatar URL</Label>
+            <Input
+              id="avatarUrl"
+              value={(edited as any).avatarUrl || ""}
+              onChange={(e) => setEdited({ ...edited, avatarUrl: e.target.value } as any)}
+              placeholder="https://picsum.photos/seed/..."
+              className="bg-zinc-900 border-zinc-800 focus:ring-[var(--brand)]"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Globe className="w-4 h-4" />
+            {t('language', selectedLanguage)}
+          </Label>
+          <div className="flex gap-2">
+            {(['es', 'en'] as Language[]).map((lang) => (
+              <Button
+                key={lang}
+                variant={selectedLanguage === lang ? "default" : "outline"}
+                onClick={() => setSelectedLanguage(lang)}
+                className={cn(
+                  "flex-1",
+                  selectedLanguage === lang ? "bg-[var(--brand)]" : "border-zinc-800"
+                )}
+              >
+                {lang === 'es' ? 'Español' : 'English'}
+              </Button>
+            ))}
           </div>
         </div>
 
@@ -186,12 +200,61 @@ export default function PersonalitySettings({ personality, theme, language, onSa
           />
         </div>
 
-        <Button
-          onClick={() => onSave(edited, selectedTheme, selectedLanguage)}
-          className="w-full bg-[var(--brand)] hover:opacity-90 text-white font-semibold py-6"
-        >
-          {t('save', selectedLanguage)}
-        </Button>
+        <div className="flex flex-col gap-3 pt-4 border-t border-zinc-800">
+          <Button
+            onClick={() => onSave(edited, selectedTheme, selectedLanguage)}
+            className="w-full bg-[var(--brand)] hover:opacity-90 text-white font-semibold py-6"
+          >
+            {t('save', selectedLanguage)}
+          </Button>
+
+          {isCreator && onDelete && (
+            <div className="space-y-3">
+              {!showDeleteConfirm ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full text-zinc-500 hover:text-red-400 hover:bg-red-400/10 gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {selectedLanguage === 'es' ? 'Eliminar Personaje' : 'Delete Character'}
+                </Button>
+              ) : (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-red-400">
+                        {selectedLanguage === 'es' ? '¿Estás seguro?' : 'Are you sure?'}
+                      </p>
+                      <p className="text-xs text-zinc-400">
+                        {selectedLanguage === 'es' 
+                          ? 'Esta acción es permanente y eliminará el personaje para todos los usuarios.' 
+                          : 'This action is permanent and will delete the character for all users.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      onClick={onDelete}
+                      className="flex-1 bg-red-500 hover:bg-red-600"
+                    >
+                      {selectedLanguage === 'es' ? 'Sí, eliminar permanentemente' : 'Yes, delete permanently'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1 border-zinc-800 hover:bg-zinc-800"
+                    >
+                      {selectedLanguage === 'es' ? 'Cancelar' : 'Cancel'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,77 +1,106 @@
 import React, { useState, useEffect } from "react";
-import { Message, Personality, ChatSession, Language, AppTheme } from "./types";
+import { Message, Character, ChatSession, Language, AppTheme } from "./types";
 import { generateChatResponse } from "./services/aiService";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
+import ExploreView from "./components/ExploreView";
 import PersonalitySettings from "./components/PersonalitySettings";
+import GlobalSettings from "./components/GlobalSettings";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { Dialog, DialogContent } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Heart, Menu, X } from "lucide-react";
+import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings } from "lucide-react";
 import { t } from "./translations";
+import { auth, db, signInWithGoogle, handleFirestoreError, OperationType } from "./lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, setDoc, deleteDoc, Timestamp } from "firebase/firestore";
+import { cn } from "./lib/utils";
 
-const DEFAULT_PERSONALITY: Personality = {
-  name: "Luna",
-  description: "Una chica alegre, creativa y un poco sarcástica que ama hablar de todo.",
-  traits: ["Alegre", "Sarcástica", "Creativa", "Empática"],
-  style: "Informal, usa algunos emojis, habla como una amiga cercana.",
-  customInstructions: "Sé lo más humana posible. No tengas miedo de bromear o ser directa.",
-};
-
-const STORAGE_KEY = "gams_sessions";
 const LANG_STORAGE_KEY = "gams_language";
+const THEME_STORAGE_KEY = "gams_theme";
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [language, setLanguage] = useState<Language>('es');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<AppTheme>('indigo');
+  const [view, setView] = useState<'explore' | 'chat'>('explore');
+  const [isPersonalitySettingsOpen, setIsPersonalitySettingsOpen] = useState(false);
+  const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
 
-  // Load state from localStorage
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (u) {
+        // Sync user to Firestore
+        const userDoc = doc(db, "users", u.uid);
+        setDoc(userDoc, {
+          uid: u.uid,
+          displayName: u.displayName,
+          email: u.email,
+          photoURL: u.photoURL,
+          createdAt: Timestamp.now()
+        }, { merge: true });
+      } else {
+        setSessions([]);
+        setCurrentSessionId("");
+        setView('explore');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load language and theme
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_STORAGE_KEY) as Language;
     if (savedLang) setLanguage(savedLang);
-
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setSessions(parsed);
-      if (parsed.length > 0) {
-        setCurrentSessionId(parsed[0].id);
-      }
-    } else {
-      // Create initial session
-      const initialSession: ChatSession = {
-        id: crypto.randomUUID(),
-        title: "Luna",
-        personality: DEFAULT_PERSONALITY,
-        messages: [],
-        theme: 'indigo',
-        lastUpdated: Date.now(),
-      };
-      setSessions([initialSession]);
-      setCurrentSessionId(initialSession.id);
-    }
+    
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as AppTheme;
+    if (savedTheme) setTheme(savedTheme);
   }, []);
 
-  // Save sessions to localStorage
+  // Sessions Listener
   useEffect(() => {
-    if (sessions.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-    }
-  }, [sessions]);
+    if (!user) return;
 
-  // Save language to localStorage
-  useEffect(() => {
-    localStorage.setItem(LANG_STORAGE_KEY, language);
-  }, [language]);
+    const q = query(
+      collection(db, "chats"),
+      where("userId", "==", user.uid),
+      orderBy("lastUpdated", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const sess = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
+      setSessions(sess);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "chats");
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const currentSession = sessions.find((s) => s.id === currentSessionId);
 
+  // Sync active character when session changes
+  useEffect(() => {
+    if (currentSession) {
+      const charDoc = doc(db, "characters", currentSession.characterId);
+      getDoc(charDoc).then(snap => {
+        if (snap.exists()) {
+          setActiveCharacter({ id: snap.id, ...snap.data() } as Character);
+        }
+      });
+    }
+  }, [currentSessionId]);
+
   const handleSendMessage = async (content: string) => {
-    if (!currentSession) return;
+    if (!currentSession || !activeCharacter || !user) return;
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -81,20 +110,19 @@ export default function App() {
     };
 
     const updatedMessages = [...currentSession.messages, userMessage];
+    const chatDoc = doc(db, "chats", currentSession.id);
     
-    // Update local state immediately
-    const updatedSessions = sessions.map((s) =>
-      s.id === currentSessionId
-        ? { ...s, messages: updatedMessages, lastUpdated: Date.now() }
-        : s
-    );
-    setSessions(updatedSessions);
+    await updateDoc(chatDoc, {
+      messages: updatedMessages,
+      lastUpdated: Date.now()
+    });
+
     setIsLoading(true);
 
     try {
       const aiResponseContent = await generateChatResponse(
         updatedMessages,
-        currentSession.personality,
+        activeCharacter,
         language
       );
 
@@ -105,13 +133,10 @@ export default function App() {
         timestamp: Date.now(),
       };
 
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
-            ? { ...s, messages: [...updatedMessages, aiMessage], lastUpdated: Date.now() }
-            : s
-        )
-      );
+      await updateDoc(chatDoc, {
+        messages: [...updatedMessages, aiMessage],
+        lastUpdated: Date.now()
+      });
     } catch (error) {
       console.error("Error generating response:", error);
     } finally {
@@ -119,143 +144,262 @@ export default function App() {
     }
   };
 
-  const handleNewSession = () => {
-    const name = language === 'es' ? "Nueva Amiga" : "New Friend";
-    const newSession: ChatSession = {
-      id: crypto.randomUUID(),
-      title: name,
-      personality: { ...DEFAULT_PERSONALITY, name },
+  const handleSelectCharacter = async (character: Character) => {
+    if (!user) {
+      await signInWithGoogle();
+      return;
+    }
+
+    // Check if session already exists for this character
+    const existing = sessions.find(s => s.characterId === character.id);
+    if (existing) {
+      setCurrentSessionId(existing.id);
+      setView('chat');
+      return;
+    }
+
+    // Create new session
+    const chatRef = await addDoc(collection(db, "chats"), {
+      userId: user.uid,
+      characterId: character.id,
+      characterName: character.name,
       messages: [],
-      theme: 'indigo',
-      lastUpdated: Date.now(),
-    };
-    setSessions([newSession, ...sessions]);
-    setCurrentSessionId(newSession.id);
-    setIsSettingsOpen(true);
+      theme: theme,
+      lastUpdated: Date.now()
+    });
+
+    // Increment chat count
+    const charRef = doc(db, "characters", character.id);
+    updateDoc(charRef, {
+      chatCount: (character.chatCount || 0) + 1
+    });
+
+    setCurrentSessionId(chatRef.id);
+    setView('chat');
   };
 
-  const handleDeleteSession = (id: string) => {
-    if (!window.confirm(t('deleteConfirm', language))) return;
-    const filtered = sessions.filter((s) => s.id !== id);
-    setSessions(filtered);
-    if (currentSessionId === id && filtered.length > 0) {
-      setCurrentSessionId(filtered[0].id);
+  const handleNewCharacter = () => {
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
+    setActiveCharacter(null);
+    setIsPersonalitySettingsOpen(true);
+  };
+
+  const handleSaveCharacter = async (personality: any, characterTheme: AppTheme, newLang: Language) => {
+    if (!user) return;
+    
+    const charData: any = {
+      name: personality.name,
+      description: personality.description,
+      traits: personality.traits,
+      style: personality.style,
+      customInstructions: personality.customInstructions || "",
+      avatarUrl: (personality as any).avatarUrl || "",
+      isPublic: true,
+    };
+
+    if (activeCharacter) {
+      // Update existing
+      const charRef = doc(db, "characters", activeCharacter.id);
+      await updateDoc(charRef, charData);
+      setActiveCharacter({ ...activeCharacter, ...charData });
+    } else {
+      // Create new
+      charData.creatorId = user.uid;
+      charData.creatorName = user.displayName || "Anonymous";
+      charData.chatCount = 0;
+      charData.createdAt = Timestamp.now();
+      
+      const charRef = await addDoc(collection(db, "characters"), charData);
+      handleSelectCharacter({ id: charRef.id, ...charData } as Character);
+    }
+    
+    setIsPersonalitySettingsOpen(false);
+  };
+
+  const handleDeleteCharacter = async () => {
+    if (!activeCharacter || !user) return;
+    
+    try {
+      await deleteDoc(doc(db, "characters", activeCharacter.id));
+      
+      // Also delete associated chats for this user (optional, but cleaner)
+      const chatToDelete = sessions.find(s => s.characterId === activeCharacter.id);
+      if (chatToDelete) {
+        await deleteDoc(doc(db, "chats", chatToDelete.id));
+      }
+
+      setIsPersonalitySettingsOpen(false);
+      setActiveCharacter(null);
+      setCurrentSessionId("");
+      setView('explore');
+    } catch (error) {
+      console.error("Error deleting character:", error);
     }
   };
 
-  const handleSavePersonality = (personality: Personality, theme: AppTheme, newLang: Language) => {
+  const handleSaveGlobalSettings = (newTheme: AppTheme, newLang: Language) => {
+    setTheme(newTheme);
     setLanguage(newLang);
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === currentSessionId
-          ? { ...s, personality, title: personality.name, theme: theme || s.theme }
-          : s
-      )
-    );
-    setIsSettingsOpen(false);
+    localStorage.setItem(LANG_STORAGE_KEY, newLang);
+    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    setIsGlobalSettingsOpen(false);
   };
 
   return (
-    <div 
-      className="flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
-      data-theme={currentSession?.theme || 'indigo'}
-    >
-      {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--brand)]/10 blur-[120px] rounded-full transition-colors duration-500" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full" />
-      </div>
-
-      <Sidebar
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        language={language}
-        onSelectSession={(id) => {
-          setCurrentSessionId(id);
-          setIsSidebarOpen(false);
-        }}
-        onNewSession={() => {
-          handleNewSession();
-          setIsSidebarOpen(false);
-        }}
-        onDeleteSession={handleDeleteSession}
-        onOpenSettings={() => {
-          setIsSettingsOpen(true);
-          setIsSidebarOpen(false);
-        }}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
-
-      <main className="flex-1 relative flex flex-col p-2 md:p-4 lg:p-6 overflow-hidden">
-        {/* Mobile Header */}
-        <div className="flex items-center justify-between p-2 md:hidden border-b border-zinc-800 mb-2">
-          <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
-            <Menu className="w-6 h-6" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-[var(--brand)] transition-colors" />
-            <span className="font-bold text-sm truncate max-w-[150px]">
-              {currentSession?.title || t('appName', language)}
-            </span>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
-            <Sparkles className="w-5 h-5 text-[var(--brand)] transition-colors opacity-80" />
-          </Button>
+    <ErrorBoundary>
+      <div 
+        className="flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+        data-theme={theme}
+      >
+        {/* Background Effects */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--brand)]/10 blur-[120px] rounded-full transition-colors duration-500" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full" />
         </div>
 
-        <AnimatePresence mode="wait">
-          {currentSession ? (
-            <motion.div
-              key={currentSession.id}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              className="flex-1 flex flex-col min-h-0"
-            >
-              <ChatWindow
-                messages={currentSession.messages}
-                personality={currentSession.personality}
-                language={language}
-                onSendMessage={handleSendMessage}
-                isLoading={isLoading}
-              />
-            </motion.div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-              <div className="relative">
-                <Heart className="w-20 h-20 text-[var(--brand)]/20 animate-pulse transition-colors" />
-                <Sparkles className="absolute top-0 right-0 w-8 h-8 text-[var(--brand)] animate-bounce transition-colors" />
-              </div>
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight font-heading">{t('welcome', language)}</h1>
-                <p className="text-zinc-400 max-w-md">
-                  {t('welcomeSub', language)}
-                </p>
-              </div>
-              <button
-                onClick={handleNewSession}
-                className="px-8 py-4 bg-[var(--brand)] hover:opacity-90 rounded-full font-bold transition-all transform hover:scale-105 shadow-lg shadow-[var(--brand)]/20"
-              >
-                {t('startNow', language)}
-              </button>
-            </div>
-          )}
-        </AnimatePresence>
-      </main>
+        {user && (
+          <Sidebar
+            sessions={sessions.map(s => ({ ...s, title: s.characterName } as any))}
+            currentSessionId={currentSessionId}
+            language={language}
+            onSelectSession={(id) => {
+              setCurrentSessionId(id);
+              setView('chat');
+              setIsSidebarOpen(false);
+            }}
+            onNewSession={() => {
+              setView('explore');
+              setIsSidebarOpen(false);
+            }}
+            onDeleteSession={async (id) => {
+              if (window.confirm(t('deleteConfirm', language))) {
+                await deleteDoc(doc(db, "chats", id));
+                if (currentSessionId === id) {
+                  setCurrentSessionId("");
+                  setView('explore');
+                }
+              }
+            }}
+            onOpenSettings={() => setIsGlobalSettingsOpen(true)}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+          />
+        )}
 
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-2xl p-0 bg-transparent border-none w-[95vw] md:w-full">
-          {currentSession && (
-            <PersonalitySettings
-              personality={currentSession.personality}
-              theme={currentSession.theme || 'indigo'}
+        <main className="flex-1 relative flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-zinc-800/50 bg-zinc-950/50 backdrop-blur-md z-10">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(true)}>
+                <Menu className="w-6 h-6" />
+              </Button>
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('explore')}>
+                <Heart className="w-6 h-6 text-[var(--brand)]" />
+                <span className="text-xl font-bold font-heading tracking-tight">Gams</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                className={cn("gap-2 rounded-full", view === 'explore' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                onClick={() => setView('explore')}
+              >
+                <Compass className="w-4 h-4" />
+                <span className="hidden sm:inline">{language === 'es' ? 'Explorar' : 'Explore'}</span>
+              </Button>
+              
+              {!user ? (
+                <Button onClick={signInWithGoogle} className="bg-[var(--brand)] hover:opacity-90 gap-2 rounded-full">
+                  <LogIn className="w-4 h-4" />
+                  {language === 'es' ? 'Entrar' : 'Login'}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
+                    <Plus className="w-5 h-5 text-[var(--brand)]" />
+                  </Button>
+                  {view === 'chat' && currentSession && (
+                    <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setIsPersonalitySettingsOpen(true)}>
+                      <Settings className="w-5 h-5 text-zinc-400" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {view === 'explore' ? (
+              <motion.div
+                key="explore"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <ExploreView 
+                  language={language} 
+                  onSelectCharacter={handleSelectCharacter}
+                  onCreateCharacter={handleNewCharacter}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="chat"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex-1 flex flex-col p-2 md:p-4 lg:p-6 overflow-hidden"
+              >
+                {currentSession && activeCharacter ? (
+                  <ChatWindow
+                    messages={currentSession.messages}
+                    personality={activeCharacter as any}
+                    language={language}
+                    onSendMessage={handleSendMessage}
+                    isLoading={isLoading}
+                  />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <Button onClick={() => setView('explore')} variant="outline">
+                      {language === 'es' ? 'Selecciona un personaje' : 'Select a character'}
+                    </Button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+
+        {/* Global Settings Dialog */}
+        <Dialog open={isGlobalSettingsOpen} onOpenChange={setIsGlobalSettingsOpen}>
+          <DialogContent className="max-w-md p-0 bg-transparent border-none w-[95vw]">
+            <GlobalSettings
+              theme={theme}
               language={language}
-              onSave={handleSavePersonality}
+              onSave={handleSaveGlobalSettings}
             />
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Personality Settings Dialog (Character Creation/Editing) */}
+        <Dialog open={isPersonalitySettingsOpen} onOpenChange={setIsPersonalitySettingsOpen}>
+          <DialogContent className="max-w-2xl p-0 bg-transparent border-none w-[95vw] md:w-full">
+            <PersonalitySettings
+              personality={activeCharacter || { name: "", traits: [], style: "", description: "" }}
+              theme={theme}
+              language={language}
+              onSave={handleSaveCharacter}
+              onDelete={handleDeleteCharacter}
+              isCreator={!activeCharacter || activeCharacter.creatorId === user?.uid}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+    </ErrorBoundary>
   );
 }

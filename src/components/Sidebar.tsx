@@ -53,17 +53,7 @@ export default function Sidebar({
           </Button>
         </div>
 
-        <div className="p-4 space-y-4">
-          <Button
-            onClick={onNewSession}
-            className="w-full bg-[var(--brand)] hover:opacity-90 text-white gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {t('newChat', language)}
-          </Button>
-        </div>
-
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className="flex-1 px-2 mt-4">
         <div className="space-y-1">
           <h3 className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
             {t('sidebarTitle', language)}
@@ -80,7 +70,7 @@ export default function Sidebar({
               onClick={() => onSelectSession(session.id)}
             >
               <MessageSquare className="w-4 h-4 shrink-0" />
-              <span className="flex-1 truncate text-sm">{session.title}</span>
+              <span className="flex-1 truncate text-sm">{(session as any).title}</span>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "description": "User's email address" },
+        "photoURL": { "type": "string", "description": "User's profile picture URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user first joined" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Character": {
+      "title": "Character",
+      "description": "A chatbot personality definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "Character name" },
+        "description": { "type": "string", "description": "Short bio" },
+        "traits": { "type": "array", "items": { "type": "string" }, "description": "Personality traits" },
+        "style": { "type": "string", "description": "Communication style" },
+        "customInstructions": { "type": "string", "description": "System prompt instructions" },
+        "creatorId": { "type": "string", "description": "UID of the user who created it" },
+        "creatorName": { "type": "string", "description": "Name of the creator" },
+        "avatarUrl": { "type": "string", "description": "URL to character image" },
+        "isPublic": { "type": "boolean", "description": "Whether others can see and chat with it" },
+        "chatCount": { "type": "number", "description": "Total number of chats started" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "description", "creatorId"]
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "A private chat session between a user and a character",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "description": "The user chatting" },
+        "characterId": { "type": "string", "description": "The character being chatted with" },
+        "characterName": { "type": "string" },
+        "messages": { 
+          "type": "array", 
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "role": { "type": "string", "enum": ["user", "assistant"] },
+              "content": { "type": "string" },
+              "timestamp": { "type": "number" }
+            }
+          }
+        },
+        "theme": { "type": "string" },
+        "lastUpdated": { "type": "number" }
+      },
+      "required": ["userId", "characterId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Private user profiles"
+    },
+    "/characters/{characterId}": {
+      "schema": "Character",
+      "description": "Public and private characters"
+    },
+    "/chats/{chatId}": {
+      "schema": "ChatSession",
+      "description": "Private chat sessions"
+    }
+  }
+}
