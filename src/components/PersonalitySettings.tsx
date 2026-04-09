@@ -29,7 +29,11 @@ const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[
 ];
 
 export default function PersonalitySettings({ personality, theme, language, onSave, onDelete, isCreator }: PersonalitySettingsProps) {
-  const [edited, setEdited] = useState<Personality>(personality);
+  const [edited, setEdited] = useState<Personality>({
+    isPublic: true,
+    isNSFW: false,
+    ...personality
+  });
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(theme);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
   const [newTrait, setNewTrait] = useState("");
@@ -155,6 +159,52 @@ export default function PersonalitySettings({ personality, theme, language, onSa
                 placeholder={selectedLanguage === 'es' ? "O pega una URL..." : "Or paste a URL..."}
                 className="bg-zinc-900 border-zinc-800 focus:ring-[var(--brand)] flex-1"
               />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              {t('visibility', selectedLanguage)}
+            </Label>
+            <div className="flex gap-2">
+              {[true, false].map((isPub) => (
+                <Button
+                  key={String(isPub)}
+                  variant={edited.isPublic === isPub ? "default" : "outline"}
+                  onClick={() => setEdited({ ...edited, isPublic: isPub })}
+                  className={cn(
+                    "flex-1",
+                    edited.isPublic === isPub ? "bg-[var(--brand)]" : "border-zinc-800"
+                  )}
+                >
+                  {isPub ? t('public', selectedLanguage) : t('private', selectedLanguage)}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              {t('contentRating', selectedLanguage)}
+            </Label>
+            <div className="flex gap-2">
+              {[false, true].map((isNsfw) => (
+                <Button
+                  key={String(isNsfw)}
+                  variant={edited.isNSFW === isNsfw ? "default" : "outline"}
+                  onClick={() => setEdited({ ...edited, isNSFW: isNsfw })}
+                  className={cn(
+                    "flex-1",
+                    edited.isNSFW === isNsfw ? "bg-[var(--brand)]" : "border-zinc-800"
+                  )}
+                >
+                  {isNsfw ? t('nsfw', selectedLanguage) : t('sfw', selectedLanguage)}
+                </Button>
+              ))}
             </div>
           </div>
         </div>

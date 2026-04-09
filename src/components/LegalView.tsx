@@ -31,8 +31,8 @@ export default function LegalView({ language, onBack }: LegalViewProps) {
           <div className="prose prose-invert max-w-none text-zinc-400 space-y-4">
             <p>
               {language === 'es' 
-                ? "Bienvenido a Gams. Al utilizar nuestra aplicación, aceptas los siguientes términos y condiciones:"
-                : "Welcome to Gams. By using our application, you agree to the following terms and conditions:"}
+                ? "Bienvenido a GIMS.ai. Al utilizar nuestra aplicación, aceptas los siguientes términos y condiciones:"
+                : "Welcome to GIMS.ai. By using our application, you agree to the following terms and conditions:"}
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
@@ -42,8 +42,8 @@ export default function LegalView({ language, onBack }: LegalViewProps) {
               </li>
               <li>
                 {language === 'es'
-                  ? "Propiedad de Contenido: Los personajes que creas son tu responsabilidad. Gams no se hace responsable de las interacciones generadas por la IA."
-                  : "Content Ownership: The characters you create are your responsibility. Gams is not responsible for AI-generated interactions."}
+                  ? "Propiedad de Contenido: Los personajes que creas son tu responsabilidad. GIMS.ai no se hace responsable de las interacciones generadas por la IA."
+                  : "Content Ownership: The characters you create are your responsibility. GIMS.ai is not responsible for AI-generated interactions."}
               </li>
               <li>
                 {language === 'es'
@@ -86,7 +86,7 @@ export default function LegalView({ language, onBack }: LegalViewProps) {
         </section>
 
         <div className="pt-12 border-t border-zinc-800 text-center text-zinc-500 text-sm">
-          <p>© {new Date().getFullYear()} Gams.ia - {language === 'es' ? "Todos los derechos reservados." : "All rights reserved."}</p>
+          <p>© {new Date().getFullYear()} GIMS.ai - {language === 'es' ? "Todos los derechos reservados." : "All rights reserved."}</p>
         </div>
       </div>
     </div>

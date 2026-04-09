@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Message, Character, ChatSession, Language, AppTheme } from "./types";
+import { Message, Character, ChatSession, Language, AppTheme, Personality } from "./types";
 import { generateChatResponse } from "./services/aiService";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings } from "lucide-react";
 import { t } from "./translations";
 import { auth, db, signInWithGoogle, handleFirestoreError, OperationType } from "./lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, User, updateProfile } from "firebase/auth";
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, setDoc, deleteDoc, Timestamp } from "firebase/firestore";
 import { cn } from "./lib/utils";
 
@@ -188,7 +188,7 @@ export default function App() {
     setIsPersonalitySettingsOpen(true);
   };
 
-  const handleSaveCharacter = async (personality: any, characterTheme: AppTheme, newLang: Language) => {
+  const handleSaveCharacter = async (personality: Personality, characterTheme: AppTheme, newLang: Language) => {
     if (!user) return;
     
     const charData: any = {
@@ -197,8 +197,9 @@ export default function App() {
       traits: personality.traits,
       style: personality.style,
       customInstructions: personality.customInstructions || "",
-      avatarUrl: (personality as any).avatarUrl || "",
-      isPublic: true,
+      avatarUrl: personality.avatarUrl || "",
+      isPublic: personality.isPublic,
+      isNSFW: personality.isNSFW,
     };
 
     if (activeCharacter) {
@@ -241,11 +242,23 @@ export default function App() {
     }
   };
 
-  const handleSaveGlobalSettings = (newTheme: AppTheme, newLang: Language) => {
+  const handleSaveGlobalSettings = async (newTheme: AppTheme, newLang: Language, newDisplayName: string) => {
     setTheme(newTheme);
     setLanguage(newLang);
     localStorage.setItem(LANG_STORAGE_KEY, newLang);
     localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+
+    if (user && newDisplayName !== user.displayName) {
+      try {
+        await updateProfile(user, { displayName: newDisplayName });
+        await updateDoc(doc(db, "users", user.uid), { displayName: newDisplayName });
+        // Refresh local user state
+        setUser({ ...user, displayName: newDisplayName } as User);
+      } catch (error) {
+        console.error("Error updating profile:", error);
+      }
+    }
+
     setIsGlobalSettingsOpen(false);
   };
 
@@ -303,7 +316,7 @@ export default function App() {
               </Button>
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('explore')}>
                 <Heart className="w-6 h-6 text-[var(--brand)]" />
-                <span className="text-xl font-bold font-heading tracking-tight">Gams</span>
+                <span className="text-xl font-bold font-heading tracking-tight">GIMS.ai</span>
               </div>
             </div>
 
@@ -327,7 +340,7 @@ export default function App() {
                   <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
                     <Plus className="w-5 h-5 text-[var(--brand)]" />
                   </Button>
-                  {view === 'chat' && currentSession && (
+                  {view === 'chat' && currentSession && activeCharacter && activeCharacter.creatorId === user.uid && (
                     <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setIsPersonalitySettingsOpen(true)}>
                       <Settings className="w-5 h-5 text-zinc-400" />
                     </Button>
@@ -399,6 +412,7 @@ export default function App() {
             <GlobalSettings
               theme={theme}
               language={language}
+              displayName={user?.displayName || ""}
               onSave={handleSaveGlobalSettings}
             />
           </DialogContent>
@@ -408,7 +422,7 @@ export default function App() {
         <Dialog open={isPersonalitySettingsOpen} onOpenChange={setIsPersonalitySettingsOpen}>
           <DialogContent className="max-w-2xl p-0 bg-transparent border-none w-[95vw] md:w-full">
             <PersonalitySettings
-              personality={activeCharacter || { name: "", traits: [], style: "", description: "" }}
+              personality={activeCharacter || { name: "", traits: [], style: "", description: "", isPublic: true, isNSFW: false }}
               theme={theme}
               language={language}
               onSave={handleSaveCharacter}

@@ -2,11 +2,11 @@ import { Language } from "./types";
 
 export const translations = {
   es: {
-    appName: "Gams",
+    appName: "GIMS.ai",
     sidebarTitle: "Conversaciones",
     newChat: "Nueva Amiga",
     settings: "Configuración Global",
-    welcome: "Bienvenido a Gams",
+    welcome: "Bienvenido a GIMS.ai",
     welcomeSub: "Crea una personalidad única y empieza a charlar. Tu nueva amiga te está esperando.",
     startNow: "Empezar ahora",
     online: "En línea",
@@ -25,13 +25,21 @@ export const translations = {
     terms: "Términos y Condiciones",
     privacy: "Política de Privacidad",
     legal: "Información Legal",
+    username: "Nombre de Usuario",
+    search: "Buscar personajes...",
+    public: "Público",
+    private: "Privado",
+    nsfw: "NSFW (Contenido Adulto)",
+    sfw: "SFW (Todo público)",
+    visibility: "Visibilidad",
+    contentRating: "Clasificación",
   },
   en: {
-    appName: "Gams",
+    appName: "GIMS.ai",
     sidebarTitle: "Conversations",
     newChat: "New Friend",
     settings: "Global Settings",
-    welcome: "Welcome to Gams",
+    welcome: "Welcome to GIMS.ai",
     welcomeSub: "Create a unique personality and start chatting. Your new friend is waiting for you.",
     startNow: "Start now",
     online: "Online",
@@ -50,6 +58,14 @@ export const translations = {
     terms: "Terms and Conditions",
     privacy: "Privacy Policy",
     legal: "Legal Information",
+    username: "Username",
+    search: "Search characters...",
+    public: "Public",
+    private: "Private",
+    nsfw: "NSFW (Adult Content)",
+    sfw: "SFW (General Audience)",
+    visibility: "Visibility",
+    contentRating: "Rating",
   }
 };
 

@@ -5,9 +5,12 @@ import { Character, Language } from "../types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { MessageSquare, User, Sparkles, Plus } from "lucide-react";
+import { MessageSquare, User, Sparkles, Plus, Search, Filter } from "lucide-react";
 import { motion } from "motion/react";
 import { t } from "../translations";
+import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
+import { cn } from "../lib/utils";
 
 interface ExploreViewProps {
   language: Language;
@@ -18,13 +21,17 @@ interface ExploreViewProps {
 export default function ExploreView({ language, onSelectCharacter, onCreateCharacter }: ExploreViewProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showNSFW, setShowNSFW] = useState(false);
 
   useEffect(() => {
+    // We fetch all public characters to allow client-side searching and filtering
+    // In a real app with thousands of characters, we would use server-side search
     const q = query(
       collection(db, "characters"),
       where("isPublic", "==", true),
       orderBy("chatCount", "desc"),
-      limit(20)
+      limit(100)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -37,6 +44,14 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
 
     return () => unsubscribe();
   }, []);
+
+  const filteredCharacters = characters.filter(char => {
+    const matchesSearch = char.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         char.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         char.traits.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesNSFW = showNSFW ? true : !char.isNSFW;
+    return matchesSearch && matchesNSFW;
+  });
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
@@ -56,6 +71,29 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           </Button>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('search', language)}
+              className="pl-10 bg-zinc-900/50 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl"
+            />
+          </div>
+          <Button
+            variant={showNSFW ? "default" : "outline"}
+            onClick={() => setShowNSFW(!showNSFW)}
+            className={cn(
+              "h-12 px-6 rounded-xl gap-2",
+              showNSFW ? "bg-red-500 hover:bg-red-600" : "border-zinc-800 text-zinc-400"
+            )}
+          >
+            <Filter className="w-4 h-4" />
+            {showNSFW ? t('nsfw', language) : t('sfw', language)}
+          </Button>
+        </div>
+
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map(i => (
@@ -64,7 +102,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {characters.map((char, idx) => (
+            {filteredCharacters.map((char, idx) => (
               <motion.div
                 key={char.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -80,9 +118,16 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                           {char.name[0]}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-full">
-                        <MessageSquare className="w-3 h-3" />
-                        {char.chatCount || 0}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-full">
+                          <MessageSquare className="w-3 h-3" />
+                          {char.chatCount || 0}
+                        </div>
+                        {char.isNSFW && (
+                          <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-5 bg-red-500/20 text-red-400 border-red-500/30">
+                            NSFW
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <CardTitle className="text-xl font-bold font-heading mt-4 text-zinc-100 group-hover:text-[var(--brand)] transition-colors">

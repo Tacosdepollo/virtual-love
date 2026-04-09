@@ -83,7 +83,7 @@ service cloud.firestore {
     }
 
     function isValidCharacter(data) {
-      return data.keys().hasAll(['name', 'description', 'traits', 'style', 'customInstructions', 'creatorId', 'creatorName', 'isPublic', 'chatCount', 'createdAt']) &&
+      return data.keys().hasAll(['name', 'description', 'traits', 'style', 'customInstructions', 'creatorId', 'creatorName', 'isPublic', 'isNSFW', 'chatCount', 'createdAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.description is string && data.description.size() < 2000 &&
              data.traits is list && data.traits.size() < 20 &&
@@ -92,6 +92,7 @@ service cloud.firestore {
              data.creatorId is string &&
              data.creatorName is string && data.creatorName.size() < 100 &&
              data.isPublic is bool &&
+             data.isNSFW is bool &&
              data.chatCount is number && data.chatCount >= 0 &&
              (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() < 1000000)); // Allow up to 1MB for base64
     }

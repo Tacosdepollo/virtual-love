@@ -18,6 +18,7 @@ export interface Character {
   creatorName: string;
   avatarUrl?: string;
   isPublic: boolean;
+  isNSFW: boolean;
   chatCount: number;
   createdAt: any;
 }
@@ -39,6 +40,8 @@ export interface Personality {
   description: string;
   customInstructions?: string;
   avatarUrl?: string;
+  isPublic: boolean;
+  isNSFW: boolean;
 }
 
 export type AppTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';

@@ -3,14 +3,16 @@ import { AppTheme, Language } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
-import { Settings, Palette, Check, Globe } from "lucide-react";
+import { Settings, Palette, Check, Globe, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
+import { Input } from "./ui/input";
 
 interface GlobalSettingsProps {
   theme: AppTheme;
   language: Language;
-  onSave: (theme: AppTheme, language: Language) => void;
+  displayName: string;
+  onSave: (theme: AppTheme, language: Language, displayName: string) => void;
 }
 
 const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [
@@ -22,9 +24,10 @@ const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[
   { id: 'violet', color: 'bg-violet-500', name: { es: 'Violeta', en: 'Violet' } },
 ];
 
-export default function GlobalSettings({ theme, language, onSave }: GlobalSettingsProps) {
+export default function GlobalSettings({ theme, language, displayName, onSave }: GlobalSettingsProps) {
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(theme);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
+  const [newDisplayName, setNewDisplayName] = useState(displayName);
 
   return (
     <Card className="w-full max-w-md mx-auto border-none shadow-2xl bg-zinc-950/50 backdrop-blur-xl text-zinc-100 overflow-hidden rounded-2xl">
@@ -35,11 +38,24 @@ export default function GlobalSettings({ theme, language, onSave }: GlobalSettin
         </CardTitle>
         <CardDescription className="text-zinc-400">
           {selectedLanguage === 'es' 
-            ? 'Personaliza tu experiencia en Gams.ia' 
-            : 'Customize your experience on Gams.ia'}
+            ? 'Personaliza tu experiencia en GIMS.ai' 
+            : 'Customize your experience on GIMS.ai'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
+        <div className="space-y-4">
+          <Label className="flex items-center gap-2 text-zinc-300">
+            <User className="w-4 h-4" />
+            {t('username', selectedLanguage)}
+          </Label>
+          <Input
+            value={newDisplayName}
+            onChange={(e) => setNewDisplayName(e.target.value)}
+            placeholder={t('username', selectedLanguage)}
+            className="bg-zinc-900 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl"
+          />
+        </div>
+
         <div className="space-y-4">
           <Label className="flex items-center gap-2 text-zinc-300">
             <Globe className="w-4 h-4" />
@@ -89,7 +105,7 @@ export default function GlobalSettings({ theme, language, onSave }: GlobalSettin
         </div>
 
         <Button
-          onClick={() => onSave(selectedTheme, selectedLanguage)}
+          onClick={() => onSave(selectedTheme, selectedLanguage, newDisplayName)}
           className="w-full bg-[var(--brand)] hover:opacity-90 text-white font-bold py-6 rounded-xl shadow-lg shadow-[var(--brand)]/20"
         >
           {selectedLanguage === 'es' ? 'Guardar Cambios' : 'Save Changes'}
