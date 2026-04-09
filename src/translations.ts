@@ -22,6 +22,9 @@ export const translations = {
     theme: "Tema Visual",
     language: "Idioma",
     deleteConfirm: "¿Estás seguro de que quieres eliminar esta conversación?",
+    terms: "Términos y Condiciones",
+    privacy: "Política de Privacidad",
+    legal: "Información Legal",
   },
   en: {
     appName: "Gams",
@@ -44,6 +47,9 @@ export const translations = {
     theme: "Visual Theme",
     language: "Language",
     deleteConfirm: "Are you sure you want to delete this conversation?",
+    terms: "Terms and Conditions",
+    privacy: "Privacy Policy",
+    legal: "Legal Information",
   }
 };
 

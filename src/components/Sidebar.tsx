@@ -14,6 +14,7 @@ interface SidebarProps {
   onNewSession: () => void;
   onDeleteSession: (id: string) => void;
   onOpenSettings: () => void;
+  onOpenLegal: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -26,6 +27,7 @@ export default function Sidebar({
   onNewSession,
   onDeleteSession,
   onOpenSettings,
+  onOpenLegal,
   isOpen,
   onClose,
 }: SidebarProps) {
@@ -93,6 +95,13 @@ export default function Sidebar({
         >
           <Settings className="w-4 h-4" />
           {t('settings', language)}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={onOpenLegal}
+          className="w-full justify-start gap-2 text-zinc-500 hover:text-zinc-300 text-xs mt-1"
+        >
+          {t('legal', language)}
         </Button>
       </div>
     </div>

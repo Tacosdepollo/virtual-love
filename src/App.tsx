@@ -4,6 +4,7 @@ import { generateChatResponse } from "./services/aiService";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import ExploreView from "./components/ExploreView";
+import LegalView from "./components/LegalView";
 import PersonalitySettings from "./components/PersonalitySettings";
 import GlobalSettings from "./components/GlobalSettings";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -26,7 +27,7 @@ export default function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [language, setLanguage] = useState<Language>('es');
   const [theme, setTheme] = useState<AppTheme>('indigo');
-  const [view, setView] = useState<'explore' | 'chat'>('explore');
+  const [view, setView] = useState<'explore' | 'chat' | 'legal'>('explore');
   const [isPersonalitySettingsOpen, setIsPersonalitySettingsOpen] = useState(false);
   const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -284,6 +285,10 @@ export default function App() {
               }
             }}
             onOpenSettings={() => setIsGlobalSettingsOpen(true)}
+            onOpenLegal={() => {
+              setView('legal');
+              setIsSidebarOpen(false);
+            }}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
           />
@@ -345,6 +350,19 @@ export default function App() {
                   language={language} 
                   onSelectCharacter={handleSelectCharacter}
                   onCreateCharacter={handleNewCharacter}
+                />
+              </motion.div>
+            ) : view === 'legal' ? (
+              <motion.div
+                key="legal"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <LegalView 
+                  language={language} 
+                  onBack={() => setView('explore')} 
                 />
               </motion.div>
             ) : (
