@@ -38,6 +38,7 @@ export interface Personality {
   style: string;
   description: string;
   customInstructions?: string;
+  avatarUrl?: string;
 }
 
 export type AppTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';

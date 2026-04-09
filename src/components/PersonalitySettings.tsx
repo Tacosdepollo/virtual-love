@@ -6,7 +6,7 @@ import { Textarea } from "./ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
-import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle } from "lucide-react";
+import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle, Upload, Camera } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 
@@ -34,6 +34,7 @@ export default function PersonalitySettings({ personality, theme, language, onSa
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
   const [newTrait, setNewTrait] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleAddTrait = () => {
     if (newTrait.trim() && !edited.traits.includes(newTrait.trim())) {
@@ -44,6 +45,54 @@ export default function PersonalitySettings({ personality, theme, language, onSa
 
   const handleRemoveTrait = (trait: string) => {
     setEdited({ ...edited, traits: edited.traits.filter((t) => t !== trait) });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert(selectedLanguage === 'es' ? "La imagen es demasiado grande (máx 5MB)" : "Image is too large (max 5MB)");
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize logic using canvas
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Convert to low-quality JPEG to save space in Firestore
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setEdited({ ...edited, avatarUrl: dataUrl } as any);
+        setIsUploading(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -73,14 +122,40 @@ export default function PersonalitySettings({ personality, theme, language, onSa
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="avatarUrl">Avatar URL</Label>
-            <Input
-              id="avatarUrl"
-              value={(edited as any).avatarUrl || ""}
-              onChange={(e) => setEdited({ ...edited, avatarUrl: e.target.value } as any)}
-              placeholder="https://picsum.photos/seed/..."
-              className="bg-zinc-900 border-zinc-800 focus:ring-[var(--brand)]"
-            />
+            <Label htmlFor="avatarUrl">Avatar</Label>
+            <div className="flex gap-2">
+              <div className="relative group shrink-0">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-800 bg-zinc-900 flex items-center justify-center">
+                  {((edited as any).avatarUrl) ? (
+                    <img 
+                      src={(edited as any).avatarUrl} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <Camera className="w-5 h-5 text-zinc-600" />
+                  )}
+                </div>
+                <label className="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                  <Upload className="w-4 h-4 text-white" />
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
+              <Input
+                id="avatarUrl"
+                value={(edited as any).avatarUrl || ""}
+                onChange={(e) => setEdited({ ...edited, avatarUrl: e.target.value } as any)}
+                placeholder={selectedLanguage === 'es' ? "O pega una URL..." : "Or paste a URL..."}
+                className="bg-zinc-900 border-zinc-800 focus:ring-[var(--brand)] flex-1"
+              />
+            </div>
           </div>
         </div>
 

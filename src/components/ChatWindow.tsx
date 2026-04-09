@@ -44,6 +44,7 @@ export default function ChatWindow({ messages, personality, language, onSendMess
       <div className="hidden md:flex p-4 border-b border-zinc-800 bg-zinc-900/50 items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 border-2 border-[var(--brand)]/50">
+            <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
             <AvatarFallback className="bg-[var(--brand)] text-white">
               {personality.name[0]}
             </AvatarFallback>
@@ -98,7 +99,10 @@ export default function ChatWindow({ messages, personality, language, onSendMess
                   {msg.role === "user" ? (
                     <AvatarFallback className="bg-zinc-800 text-zinc-400"><User className="w-4 h-4" /></AvatarFallback>
                   ) : (
-                    <AvatarFallback className="bg-[var(--brand)] text-white">{personality.name[0]}</AvatarFallback>
+                    <>
+                      <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
+                      <AvatarFallback className="bg-[var(--brand)] text-white">{personality.name[0]}</AvatarFallback>
+                    </>
                   )}
                 </Avatar>
                 
@@ -128,6 +132,7 @@ export default function ChatWindow({ messages, personality, language, onSendMess
                 className="flex gap-3 mr-auto"
               >
                 <Avatar className="w-8 h-8 border-[var(--brand)]/30">
+                  <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
                   <AvatarFallback className="bg-[var(--brand)] text-white">{personality.name[0]}</AvatarFallback>
                 </Avatar>
                 <div className="bg-zinc-800/80 px-4 py-3 rounded-2xl rounded-tl-none border border-zinc-700/50">

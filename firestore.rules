@@ -67,7 +67,7 @@ service cloud.firestore {
 
     function isValidUrl(url) {
       return url is string &&
-        (url.matches("^https://.*") || url.matches("^http://.*"));
+        (url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*;base64,.*"));
     }
 
     // ===============================================================
@@ -84,16 +84,16 @@ service cloud.firestore {
 
     function isValidCharacter(data) {
       return data.keys().hasAll(['name', 'description', 'traits', 'style', 'customInstructions', 'creatorId', 'creatorName', 'isPublic', 'chatCount', 'createdAt']) &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
-             data.description is string && data.description.size() < 200 &&
-             data.traits is list && data.traits.size() < 10 &&
-             data.style is string && data.style.size() < 200 &&
-             data.customInstructions is string && data.customInstructions.size() < 1000 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.description is string && data.description.size() < 2000 &&
+             data.traits is list && data.traits.size() < 20 &&
+             data.style is string && data.style.size() < 500 &&
+             data.customInstructions is string && data.customInstructions.size() < 5000 &&
              data.creatorId is string &&
-             data.creatorName is string && data.creatorName.size() < 50 &&
+             data.creatorName is string && data.creatorName.size() < 100 &&
              data.isPublic is bool &&
              data.chatCount is number && data.chatCount >= 0 &&
-             (!('avatarUrl' in data) || isValidUrl(data.avatarUrl));
+             (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() < 1000000)); // Allow up to 1MB for base64
     }
 
     function isValidChat(data) {
@@ -101,7 +101,7 @@ service cloud.firestore {
              data.userId == request.auth.uid &&
              data.characterId is string &&
              data.characterName is string &&
-             data.messages is list && data.messages.size() < 100 &&
+             data.messages is list && data.messages.size() < 1000 &&
              data.lastUpdated is number;
     }
 
