@@ -9,6 +9,7 @@ import { Button } from "./components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Heart, Menu, X } from "lucide-react";
 import { t } from "./translations";
+import { Analytics } from "@vercel/analytics/react";
 
 const DEFAULT_PERSONALITY: Personality = {
   name: "Luna",
@@ -160,6 +161,7 @@ export default function App() {
       className="flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
       data-theme={currentSession?.theme || 'indigo'}
     >
+      <Analytics />
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--brand)]/10 blur-[120px] rounded-full transition-colors duration-500" />
