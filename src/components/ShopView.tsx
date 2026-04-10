@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ShopItem, Language, UserStats } from "../types";
 import { Button } from "./ui/button";
+import { PayPalButtons } from "@paypal/react-paypal-js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { Coins, Check, ShoppingBag, Play, Sparkles } from "lucide-react";
+import { Coins, Check, ShoppingBag, Play, Sparkles, Star, Calendar, Zap } from "lucide-react";
 import { t } from "../translations";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
@@ -11,8 +12,11 @@ import RewardedAd from "./RewardedAd";
 interface ShopViewProps {
   language: Language;
   userStats: UserStats;
+  userId?: string;
   onBuy: (item: ShopItem) => void;
   onAddCoins: (amount: number) => void;
+  onSubscribe: () => void;
+  onClaimDaily: () => void;
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -29,8 +33,32 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "font_silkscreen", name: "Silkscreen", description: "Classic pixel style", price: 400, type: "font", value: "silkscreen" },
 ];
 
-export default function ShopView({ language, userStats, onBuy, onAddCoins }: ShopViewProps) {
+export default function ShopView({ language, userStats, userId, onBuy, onAddCoins, onSubscribe, onClaimDaily }: ShopViewProps) {
   const [showAd, setShowAd] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success')) {
+      setStatusMessage({
+        type: 'success',
+        text: language === 'es' ? "¡Pago completado con éxito! Tu suscripción se activará en unos momentos." : "Payment successful! Your subscription will be active in a few moments."
+      });
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('canceled')) {
+      setStatusMessage({
+        type: 'error',
+        text: language === 'es' ? "El pago fue cancelado." : "Payment was canceled."
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [language]);
+
+  const isSubscribed = userStats.subscription?.active;
+  const lastClaim = userStats.subscription?.lastClaimDate || 0;
+  const today = new Date().setHours(0, 0, 0, 0);
+  const canClaim = isSubscribed && lastClaim < today;
 
   const handleWatchAd = () => {
     setShowAd(true);
@@ -76,7 +104,125 @@ export default function ShopView({ language, userStats, onBuy, onAddCoins }: Sho
         </div>
       </div>
 
+      <AnimatePresence>
+        {statusMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={cn(
+              "p-4 rounded-xl border font-medium text-center",
+              statusMessage.type === 'success' 
+                ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400" 
+                : "bg-rose-500/10 border-rose-500/50 text-rose-400"
+            )}
+          >
+            {statusMessage.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* Subscription Card */}
+        <motion.div
+          whileHover={{ y: -5 }}
+          className="md:col-span-2 lg:col-span-3 xl:col-span-2"
+        >
+          <Card className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 backdrop-blur-sm border-amber-500/30 overflow-hidden h-full flex flex-col relative group">
+            <div className="absolute top-0 right-0 p-4">
+              <Star className="w-12 h-12 text-amber-500/20 group-hover:scale-110 transition-transform" />
+            </div>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-amber-500 p-2 rounded-xl">
+                  <Zap className="w-6 h-6 text-black" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold text-white font-heading">GIMS+</CardTitle>
+                  <CardDescription className="text-amber-200/70 font-medium">{t('subscriptionDesc', language)}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-zinc-300">{t('subscriptionBenefit1', language)}</p>
+                  <p className="text-sm text-zinc-300">{t('subscriptionBenefit2', language)}</p>
+                  <p className="text-sm text-zinc-300">{t('subscriptionBenefit3', language)}</p>
+                </div>
+                <div className="bg-black/40 rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
+                  <Coins className="w-8 h-8 text-amber-400 mb-2" />
+                  <span className="text-2xl font-bold text-white">1000</span>
+                  <span className="text-[10px] uppercase tracking-widest text-zinc-500">Monedas / Mes</span>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              {!isSubscribed ? (
+                <div className="w-full">
+                  <PayPalButtons
+                    style={{ layout: "horizontal", height: 48, color: "gold", shape: "rect", label: "pay" }}
+                    createOrder={async () => {
+                      const response = await fetch("/api/paypal/create-order", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                      });
+                      const order = await response.json();
+                      return order.id;
+                    }}
+                    onApprove={async (data) => {
+                      const response = await fetch("/api/paypal/capture-order", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          orderID: data.orderID,
+                          userId: userId
+                        }),
+                      });
+                      const details = await response.json();
+                      if (details.status === 'COMPLETED') {
+                        setStatusMessage({
+                          type: 'success',
+                          text: language === 'es' ? "¡Pago completado con éxito! Tu suscripción se activará en unos momentos." : "Payment successful! Your subscription will be active in a few moments."
+                        });
+                      }
+                    }}
+                    onError={(err) => {
+                      console.error("PayPal Error:", err);
+                      setStatusMessage({
+                        type: 'error',
+                        text: language === 'es' ? "Error al procesar el pago con PayPal." : "Error processing PayPal payment."
+                      });
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-full flex flex-col sm:flex-row gap-3">
+                  <Button 
+                    variant="secondary"
+                    className="flex-1 h-12 rounded-xl border-amber-500/30 text-amber-200"
+                    disabled
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    {t('subscribed', language)}
+                  </Button>
+                  <Button 
+                    onClick={onClaimDaily}
+                    disabled={!canClaim}
+                    className={cn(
+                      "flex-1 h-12 rounded-xl font-bold",
+                      canClaim ? "bg-amber-500 hover:bg-amber-600 text-black" : "bg-zinc-800 text-zinc-500"
+                    )}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {canClaim ? t('claimDaily', language) : t('alreadyClaimed', language)}
+                  </Button>
+                </div>
+              )}
+            </CardFooter>
+          </Card>
+        </motion.div>
+
         {SHOP_ITEMS.map((item) => {
           const isOwned = userStats.purchasedItems.includes(item.id);
           return (

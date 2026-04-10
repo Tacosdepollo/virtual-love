@@ -128,7 +128,7 @@ export default function CreateCharacterView({
               <Sparkles className="w-8 h-8 text-[var(--brand)]" />
               {selectedLanguage === 'es' ? 'Crear Personaje' : 'Create Character'}
             </h1>
-            <p className="text-zinc-400">
+            <p className="text-zinc-300">
               {selectedLanguage === 'es' 
                 ? 'Define la personalidad y apariencia de tu nuevo bot.' 
                 : 'Define the personality and appearance of your new bot.'}
@@ -171,23 +171,23 @@ export default function CreateCharacterView({
           <div className="lg:col-span-2 space-y-6">
             <Card className="bg-zinc-900/40 border-zinc-800/50 backdrop-blur-xl rounded-2xl overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-lg">{selectedLanguage === 'es' ? 'Información Básica' : 'Basic Information'}</CardTitle>
+                <CardTitle className="text-lg text-[var(--brand)]">{selectedLanguage === 'es' ? 'Información Básica' : 'Basic Information'}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="name">{t('personalityName', selectedLanguage)}</Label>
+                    <Label htmlFor="name" className="text-[var(--brand)] font-bold">{t('personalityName', selectedLanguage)}</Label>
                     <Input
                       id="name"
                       value={edited.name}
                       onChange={(e) => setEdited({ ...edited, name: e.target.value })}
                       placeholder="Ej: Luna, Elena, Sophie..."
-                      className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl"
+                      className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl text-zinc-100"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="avatarUrl">Avatar</Label>
+                    <Label htmlFor="avatarUrl" className="text-[var(--brand)] font-bold">Avatar</Label>
                     <div className="flex gap-2">
                       <div className="relative group shrink-0">
                         <div className="w-12 h-12 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 flex items-center justify-center">
@@ -218,20 +218,20 @@ export default function CreateCharacterView({
                         value={(edited as any).avatarUrl || ""}
                         onChange={(e) => setEdited({ ...edited, avatarUrl: e.target.value } as any)}
                         placeholder={selectedLanguage === 'es' ? "O pega una URL..." : "Or paste a URL..."}
-                        className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl flex-1"
+                        className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl flex-1 text-zinc-100"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">{t('personalityDesc', selectedLanguage)}</Label>
+                  <Label htmlFor="description" className="text-[var(--brand)] font-bold">{t('personalityDesc', selectedLanguage)}</Label>
                   <Textarea
                     id="description"
                     value={edited.description}
                     onChange={(e) => setEdited({ ...edited, description: e.target.value })}
                     placeholder={selectedLanguage === 'es' ? "Ej: Una chica alegre..." : "Ex: A cheerful girl..."}
-                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] min-h-[120px] rounded-xl"
+                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] min-h-[120px] rounded-xl text-zinc-100"
                   />
                 </div>
               </CardContent>
@@ -239,11 +239,11 @@ export default function CreateCharacterView({
 
             <Card className="bg-zinc-900/40 border-zinc-800/50 backdrop-blur-xl rounded-2xl overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-lg">{selectedLanguage === 'es' ? 'Personalidad y Estilo' : 'Personality & Style'}</CardTitle>
+                <CardTitle className="text-lg text-[var(--brand)]">{selectedLanguage === 'es' ? 'Personalidad y Estilo' : 'Personality & Style'}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>{t('personalityTraits', selectedLanguage)}</Label>
+                  <Label className="text-[var(--brand)] font-bold">{t('personalityTraits', selectedLanguage)}</Label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {edited.traits.map((trait) => (
                       <Badge
@@ -265,7 +265,7 @@ export default function CreateCharacterView({
                       onChange={(e) => setNewTrait(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddTrait()}
                       placeholder={selectedLanguage === 'es' ? "Añadir rasgo..." : "Add trait..."}
-                      className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-11 rounded-xl"
+                      className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-11 rounded-xl text-zinc-100"
                     />
                     <Button
                       onClick={handleAddTrait}
@@ -278,24 +278,24 @@ export default function CreateCharacterView({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="style">{t('personalityStyle', selectedLanguage)}</Label>
+                  <Label htmlFor="style" className="text-[var(--brand)] font-bold">{t('personalityStyle', selectedLanguage)}</Label>
                   <Input
                     id="style"
                     value={edited.style}
                     onChange={(e) => setEdited({ ...edited, style: e.target.value })}
                     placeholder={selectedLanguage === 'es' ? "Ej: Informal, sarcástico..." : "Ex: Informal, sarcastic..."}
-                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-11 rounded-xl"
+                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-11 rounded-xl text-zinc-100"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="instructions">{t('personalityInstructions', selectedLanguage)}</Label>
+                  <Label htmlFor="instructions" className="text-[var(--brand)] font-bold">{t('personalityInstructions', selectedLanguage)}</Label>
                   <Textarea
                     id="instructions"
                     value={edited.customInstructions}
                     onChange={(e) => setEdited({ ...edited, customInstructions: e.target.value })}
                     placeholder={selectedLanguage === 'es' ? "Instrucciones detalladas para la IA..." : "Detailed instructions for the AI..."}
-                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] min-h-[100px] rounded-xl"
+                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] min-h-[100px] rounded-xl text-zinc-100"
                   />
                 </div>
               </CardContent>
@@ -306,11 +306,11 @@ export default function CreateCharacterView({
           <div className="space-y-6">
             <Card className="bg-zinc-900/40 border-zinc-800/50 backdrop-blur-xl rounded-2xl overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-lg">{selectedLanguage === 'es' ? 'Configuración' : 'Settings'}</CardTitle>
+                <CardTitle className="text-lg text-[var(--brand)]">{selectedLanguage === 'es' ? 'Configuración' : 'Settings'}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
+                  <Label className="flex items-center gap-2 text-[var(--brand)] font-bold">
                     <Globe className="w-4 h-4 text-zinc-400" />
                     {t('visibility', selectedLanguage)}
                   </Label>
@@ -332,7 +332,7 @@ export default function CreateCharacterView({
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
+                  <Label className="flex items-center gap-2 text-[var(--brand)] font-bold">
                     <AlertTriangle className="w-4 h-4 text-zinc-400" />
                     {t('contentRating', selectedLanguage)}
                   </Label>
@@ -354,33 +354,7 @@ export default function CreateCharacterView({
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-zinc-400" />
-                    {t('theme', selectedLanguage)}
-                  </Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {THEMES.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedTheme(t.id)}
-                        className={cn(
-                          "flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all",
-                          selectedTheme === t.id 
-                            ? "border-[var(--brand)] bg-[var(--brand)]/10" 
-                            : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
-                        )}
-                      >
-                        <div className={cn("w-5 h-5 rounded-full", t.color)}>
-                          {selectedTheme === t.id && <Check className="w-3 h-3 text-white m-auto" />}
-                        </div>
-                        <span className="text-[9px] font-medium text-zinc-400">{t.name[selectedLanguage]}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>{t('tags', selectedLanguage)}</Label>
+                  <Label className="text-[var(--brand)] font-bold">{t('tags', selectedLanguage)}</Label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(edited.tags || []).map((tag) => (
                       <Badge
@@ -402,7 +376,7 @@ export default function CreateCharacterView({
                       onChange={(e) => setNewTag(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
                       placeholder={selectedLanguage === 'es' ? "Tag..." : "Tag..."}
-                      className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-10 rounded-xl text-xs"
+                      className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-10 rounded-xl text-xs text-zinc-100"
                     />
                     <Button
                       onClick={handleAddTag}
@@ -443,7 +417,7 @@ export default function CreateCharacterView({
                           <p className="text-sm font-bold text-red-400">
                             {selectedLanguage === 'es' ? '¿Estás seguro?' : 'Are you sure?'}
                           </p>
-                          <p className="text-[10px] text-zinc-500 leading-tight">
+                          <p className="text-[10px] text-zinc-400 leading-tight">
                             {selectedLanguage === 'es' 
                               ? 'Esta acción es permanente y eliminará el personaje para todos los usuarios.' 
                               : 'This action is permanent and will delete the character for all users.'}

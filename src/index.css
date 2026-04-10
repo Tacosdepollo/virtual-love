@@ -175,6 +175,12 @@
   --bg-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
   --bg-opacity: 0.3;
 }
+[data-theme='cyberpunk'] {
+  --brand: oklch(0.7 0.3 320); /* Neon Pink/Purple */
+  --bg-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('https://picsum.photos/seed/cyberpunk/1920/1080');
+  --bg-size: cover;
+  --bg-opacity: 0.8;
+}
 
 [data-theme='storm'] { 
   --brand: oklch(0.606 0.25 292.9); 

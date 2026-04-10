@@ -17,7 +17,7 @@ interface PersonalizationViewProps {
   onUpdateOpacity: (opacity: number) => void;
 }
 
-const DEFAULT_THEMES: AppTheme[] = ['rose', 'emerald', 'amber', 'sky', 'space', 'retro'];
+const DEFAULT_THEMES: AppTheme[] = ['rose', 'emerald', 'amber', 'sky', 'space', 'retro', 'cyberpunk'];
 const DEFAULT_FONTS: AppFont[] = ['sans'];
 
 export default function PersonalizationView({ 

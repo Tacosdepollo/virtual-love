@@ -33,14 +33,14 @@ export default function CharacterCreationHelp({ language }: CharacterCreationHel
             </div>
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-zinc-200">{item.title}</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">{item.desc}</p>
+              <p className="text-xs text-zinc-300 leading-relaxed">{item.desc}</p>
             </div>
           </div>
         ))}
       </div>
 
       <div className="pt-4 border-t border-zinc-800">
-        <p className="text-[10px] text-zinc-500 italic text-center">
+        <p className="text-[10px] text-zinc-400 italic text-center">
           Recuerda: Cuanto más detallado seas, más realista será la personalidad de tu IA.
         </p>
       </div>

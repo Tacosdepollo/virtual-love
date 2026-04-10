@@ -61,12 +61,20 @@ export interface ShopItem {
   previewColor?: string;
 }
 
+export interface Subscription {
+  active: boolean;
+  startDate: number;
+  lastClaimDate: number;
+  type: 'monthly';
+}
+
 export interface UserStats {
   coins: number;
   purchasedItems: string[]; // IDs of ShopItems
   currentFont: AppFont;
   unlockedThemes: AppTheme[];
   themeOpacity?: number;
+  subscription?: Subscription;
 }
 
 export type Intensity = 'low' | 'medium' | 'high' | 'extreme';

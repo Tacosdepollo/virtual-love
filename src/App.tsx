@@ -23,6 +23,8 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, 
 import { cn } from "./lib/utils";
 import { audioManager } from "./lib/audio";
 
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+
 const LANG_STORAGE_KEY = "gams_language";
 const THEME_STORAGE_KEY = "gams_theme";
 const FONT_STORAGE_KEY = "gams_font";
@@ -71,7 +73,8 @@ export default function App() {
                 purchasedItems: [],
                 currentFont: 'sans',
                 unlockedThemes: [],
-                themeOpacity: 0.6
+                themeOpacity: 0.6,
+                subscription: undefined
               }
             }, { merge: true });
           } else {
@@ -378,7 +381,8 @@ export default function App() {
           purchasedItems: [],
           currentFont: 'sans',
           unlockedThemes: [],
-          themeOpacity: 0.6
+          themeOpacity: 0.6,
+          subscription: undefined
         };
         
         await updateDoc(doc(db, "users", user.uid), { stats: initialStats });
@@ -499,16 +503,51 @@ export default function App() {
     setShowAd(false);
   };
 
+  const handleSubscribe = async () => {
+    if (!user) {
+      await signInWithGoogle();
+      return;
+    }
+    // Stripe logic removed as per user request. PayPal is the primary payment method.
+  };
+
+  const handleClaimDaily = async () => {
+    if (!user || !userStats.subscription?.active) return;
+    
+    const today = new Date().setHours(0, 0, 0, 0);
+    if (userStats.subscription.lastClaimDate >= today) {
+      alert(t('alreadyClaimed', language));
+      return;
+    }
+
+    audioManager.play('pop');
+    const newStats: UserStats = {
+      ...userStats,
+      coins: userStats.coins + 33,
+      subscription: {
+        ...userStats.subscription,
+        lastClaimDate: Date.now()
+      }
+    };
+    setUserStats(newStats);
+    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+  };
+
   return (
-    <ErrorBoundary>
-      <div 
-        className="flex h-[100dvh] w-full bg-[#050505] text-zinc-100 overflow-hidden font-sans"
-        data-theme={theme}
-        style={{ 
-          fontFamily: `var(--font-${font})`,
-          '--bg-opacity': userStats.themeOpacity ?? 0.6
-        } as React.CSSProperties}
-      >
+    <PayPalScriptProvider options={{ 
+      clientId: (import.meta as any).env.VITE_PAYPAL_CLIENT_ID || "test",
+      currency: "USD",
+      intent: "capture"
+    }}>
+      <ErrorBoundary>
+        <div 
+          className="flex h-[100dvh] w-full bg-[#050505] text-zinc-100 overflow-hidden font-sans"
+          data-theme={theme}
+          style={{ 
+            fontFamily: `var(--font-${font})`,
+            '--bg-opacity': userStats.themeOpacity ?? 0.6
+          } as React.CSSProperties}
+        >
         {/* Background Effects */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           <div 
@@ -657,7 +696,7 @@ export default function App() {
                   <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
                     <Plus className="w-5 h-5 text-[var(--brand)]" />
                   </Button>
-                  {view === 'chat' && currentSession && activeCharacter && activeCharacter.creatorId === user.uid && (
+                  {view === 'chat' && currentSession && activeCharacter && (activeCharacter.creatorId === user.uid || isAdmin) && (
                     <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setView('create')}>
                       <Settings className="w-5 h-5 text-zinc-400" />
                     </Button>
@@ -693,6 +732,7 @@ export default function App() {
                 <ShopView 
                   language={language} 
                   userStats={userStats}
+                  userId={user?.uid}
                   onBuy={handleBuyItem}
                   onAddCoins={async (amount) => {
                     if (!user) return;
@@ -704,6 +744,8 @@ export default function App() {
                     setUserStats(newStats);
                     await updateDoc(doc(db, "users", user.uid), { stats: newStats });
                   }}
+                  onSubscribe={handleSubscribe}
+                  onClaimDaily={handleClaimDaily}
                 />
               </motion.div>
             ) : view === 'personalization' ? (
@@ -739,7 +781,7 @@ export default function App() {
                   language={language}
                   onSave={handleSaveCharacter}
                   onDelete={handleDeleteCharacter}
-                  isCreator={!activeCharacter || activeCharacter.creatorId === user?.uid}
+                  isCreator={!activeCharacter || activeCharacter.creatorId === user?.uid || isAdmin}
                   onBack={() => setView('explore')}
                 />
               </motion.div>
@@ -809,5 +851,6 @@ export default function App() {
         )}
       </div>
     </ErrorBoundary>
+  </PayPalScriptProvider>
   );
 }
