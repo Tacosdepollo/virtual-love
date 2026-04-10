@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Send, User, Bot, Loader2 } from "lucide-react";
+import { Send, User, Bot, Loader2, Pin, PinOff, BrainCircuit, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
@@ -16,9 +16,19 @@ interface ChatWindowProps {
   language: Language;
   onSendMessage: (content: string) => void;
   isLoading: boolean;
+  coreThoughts?: string[];
+  onToggleCoreThought?: (messageId: string) => void;
 }
 
-export default function ChatWindow({ messages, personality, language, onSendMessage, isLoading }: ChatWindowProps) {
+export default function ChatWindow({ 
+  messages, 
+  personality, 
+  language, 
+  onSendMessage, 
+  isLoading,
+  coreThoughts = [],
+  onToggleCoreThought
+}: ChatWindowProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +67,49 @@ export default function ChatWindow({ messages, personality, language, onSendMess
             </p>
           </div>
         </div>
+
+        {coreThoughts.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full">
+            <BrainCircuit className="w-4 h-4 text-purple-400" />
+            <span className="text-xs font-medium text-purple-300">
+              {coreThoughts.length}/6 {t('coreThoughts', language)}
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* Core Thoughts Bar (Mobile & Desktop) */}
+      <AnimatePresence>
+        {coreThoughts.length > 0 && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-purple-950/20 border-b border-purple-500/10 overflow-hidden"
+          >
+            <div className="p-2 flex gap-2 overflow-x-auto custom-scrollbar">
+              {coreThoughts.map(id => {
+                const msg = messages.find(m => m.id === id);
+                if (!msg) return null;
+                return (
+                  <div 
+                    key={id} 
+                    className="shrink-0 max-w-[200px] bg-purple-900/30 border border-purple-500/20 rounded-lg p-2 relative group"
+                  >
+                    <p className="text-[10px] text-zinc-300 line-clamp-2 italic">"{msg.content}"</p>
+                    <button 
+                      onClick={() => onToggleCoreThought?.(id)}
+                      className="absolute -top-1 -right-1 bg-purple-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Messages Area */}
       <ScrollArea ref={scrollRef} className="flex-1 min-h-0 p-4 lg:p-6">
@@ -107,17 +159,32 @@ export default function ChatWindow({ messages, personality, language, onSendMess
                 </Avatar>
                 
                 <div className={cn(
-                  "space-y-1",
+                  "space-y-1 group relative",
                   msg.role === "user" ? "items-end" : "items-start"
                 )}>
                   <div className={cn(
                     "px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm markdown-body",
                     msg.role === "user" 
                       ? "bg-[var(--brand)] text-white rounded-tr-none" 
-                      : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-zinc-700/50"
+                      : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-zinc-700/50",
+                    coreThoughts.includes(msg.id) && "border-purple-500/50 ring-1 ring-purple-500/30"
                   )}>
                     <Markdown>{msg.content}</Markdown>
                   </div>
+                  
+                  {/* Pin Button */}
+                  <button
+                    onClick={() => onToggleCoreThought?.(msg.id)}
+                    className={cn(
+                      "absolute top-0 opacity-0 group-hover:opacity-100 transition-all p-1.5 rounded-full bg-zinc-900/80 border border-zinc-700 shadow-lg z-10",
+                      msg.role === "user" ? "-left-10" : "-right-10",
+                      coreThoughts.includes(msg.id) && "opacity-100 text-purple-400 border-purple-500/50"
+                    )}
+                    title={coreThoughts.includes(msg.id) ? t('unpinThought', language) : t('pinThought', language)}
+                  >
+                    {coreThoughts.includes(msg.id) ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                  </button>
+
                   <span className="text-[10px] text-zinc-500 px-1">
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>

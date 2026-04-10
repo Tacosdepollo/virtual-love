@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Message, Character, ChatSession, Language, AppTheme, Personality } from "./types";
+import { Message, Character, ChatSession, Language, AppTheme, Personality, Intensity } from "./types";
 import { generateChatResponse } from "./services/aiService";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
@@ -20,6 +20,7 @@ import { cn } from "./lib/utils";
 
 const LANG_STORAGE_KEY = "gams_language";
 const THEME_STORAGE_KEY = "gams_theme";
+const INTENSITY_STORAGE_KEY = "gams_intensity";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -27,6 +28,7 @@ export default function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [language, setLanguage] = useState<Language>('es');
   const [theme, setTheme] = useState<AppTheme>('indigo');
+  const [intensity, setIntensity] = useState<Intensity>('medium');
   const [view, setView] = useState<'explore' | 'chat' | 'legal'>('explore');
   const [isPersonalitySettingsOpen, setIsPersonalitySettingsOpen] = useState(false);
   const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
@@ -64,6 +66,9 @@ export default function App() {
     
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as AppTheme;
     if (savedTheme) setTheme(savedTheme);
+
+    const savedIntensity = localStorage.getItem(INTENSITY_STORAGE_KEY) as Intensity;
+    if (savedIntensity) setIntensity(savedIntensity);
   }, []);
 
   // Sessions Listener
@@ -124,7 +129,9 @@ export default function App() {
       const aiResponseContent = await generateChatResponse(
         updatedMessages,
         activeCharacter,
-        language
+        language,
+        currentSession.coreThoughts || [],
+        intensity
       );
 
       const aiMessage: Message = {
@@ -165,11 +172,12 @@ export default function App() {
       characterId: character.id,
       characterName: character.name,
       messages: [],
+      coreThoughts: [],
       theme: theme,
       lastUpdated: Date.now()
     });
 
-    // Increment chat count
+    // Increment chat count ONLY for new sessions (Optimization)
     const charRef = doc(db, "characters", character.id);
     updateDoc(charRef, {
       chatCount: (character.chatCount || 0) + 1
@@ -177,6 +185,29 @@ export default function App() {
 
     setCurrentSessionId(chatRef.id);
     setView('chat');
+  };
+
+  const handleToggleCoreThought = async (messageId: string) => {
+    if (!currentSession) return;
+    
+    const currentThoughts = currentSession.coreThoughts || [];
+    let newThoughts = [...currentThoughts];
+    
+    if (currentThoughts.includes(messageId)) {
+      newThoughts = newThoughts.filter(id => id !== messageId);
+    } else {
+      if (currentThoughts.length >= 6) {
+        alert(t('coreThoughtsLimit', language));
+        return;
+      }
+      newThoughts.push(messageId);
+    }
+    
+    const chatDoc = doc(db, "chats", currentSession.id);
+    await updateDoc(chatDoc, {
+      coreThoughts: newThoughts,
+      lastUpdated: Date.now()
+    });
   };
 
   const handleNewCharacter = () => {
@@ -195,6 +226,7 @@ export default function App() {
       name: personality.name,
       description: personality.description,
       traits: personality.traits,
+      tags: personality.tags || [],
       style: personality.style,
       customInstructions: personality.customInstructions || "",
       avatarUrl: personality.avatarUrl || "",
@@ -242,11 +274,13 @@ export default function App() {
     }
   };
 
-  const handleSaveGlobalSettings = async (newTheme: AppTheme, newLang: Language, newDisplayName: string) => {
+  const handleSaveGlobalSettings = async (newTheme: AppTheme, newLang: Language, newDisplayName: string, newIntensity: Intensity) => {
     setTheme(newTheme);
     setLanguage(newLang);
+    setIntensity(newIntensity);
     localStorage.setItem(LANG_STORAGE_KEY, newLang);
     localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    localStorage.setItem(INTENSITY_STORAGE_KEY, newIntensity);
 
     if (user && newDisplayName !== user.displayName) {
       try {
@@ -393,6 +427,8 @@ export default function App() {
                     language={language}
                     onSendMessage={handleSendMessage}
                     isLoading={isLoading}
+                    coreThoughts={currentSession.coreThoughts}
+                    onToggleCoreThought={handleToggleCoreThought}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
@@ -412,6 +448,7 @@ export default function App() {
             <GlobalSettings
               theme={theme}
               language={language}
+              intensity={intensity}
               displayName={user?.displayName || ""}
               onSave={handleSaveGlobalSettings}
             />
@@ -422,7 +459,7 @@ export default function App() {
         <Dialog open={isPersonalitySettingsOpen} onOpenChange={setIsPersonalitySettingsOpen}>
           <DialogContent className="max-w-2xl p-0 bg-transparent border-none w-[95vw] md:w-full">
             <PersonalitySettings
-              personality={activeCharacter || { name: "", traits: [], style: "", description: "", isPublic: true, isNSFW: false }}
+              personality={activeCharacter || { name: "", traits: [], tags: [], style: "", description: "", isPublic: true, isNSFW: false }}
               theme={theme}
               language={language}
               onSave={handleSaveCharacter}

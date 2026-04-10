@@ -37,6 +37,7 @@ export default function PersonalitySettings({ personality, theme, language, onSa
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(theme);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
   const [newTrait, setNewTrait] = useState("");
+  const [newTag, setNewTag] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -49,6 +50,17 @@ export default function PersonalitySettings({ personality, theme, language, onSa
 
   const handleRemoveTrait = (trait: string) => {
     setEdited({ ...edited, traits: edited.traits.filter((t) => t !== trait) });
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !edited.tags.includes(newTag.trim())) {
+      setEdited({ ...edited, tags: [...edited.tags, newTag.trim()] });
+      setNewTag("");
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setEdited({ ...edited, tags: edited.tags.filter((t) => t !== tag) });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,6 +307,41 @@ export default function PersonalitySettings({ personality, theme, language, onSa
             />
             <Button
               onClick={handleAddTrait}
+              variant="outline"
+              className="border-zinc-800 hover:bg-zinc-800"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t('tags', selectedLanguage)}</Label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {(edited.tags || []).map((tag) => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="bg-purple-500/20 text-purple-400 border-purple-500/30 px-3 py-1 flex items-center gap-1"
+              >
+                {tag}
+                <X
+                  className="w-3 h-3 cursor-pointer hover:opacity-80"
+                  onClick={() => handleRemoveTag(tag)}
+                />
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+              placeholder={selectedLanguage === 'es' ? "Añadir etiqueta (ej: Anime, RPG)..." : "Add tag (ex: Anime, RPG)..."}
+              className="bg-zinc-900 border-zinc-800 focus:ring-[var(--brand)]"
+            />
+            <Button
+              onClick={handleAddTag}
               variant="outline"
               className="border-zinc-800 hover:bg-zinc-800"
             >

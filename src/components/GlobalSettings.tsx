@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { AppTheme, Language } from "../types";
+import { AppTheme, Language, Intensity } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
-import { Settings, Palette, Check, Globe, User } from "lucide-react";
+import { Settings, Palette, Check, Globe, User, Zap } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import { Input } from "./ui/input";
@@ -11,8 +11,9 @@ import { Input } from "./ui/input";
 interface GlobalSettingsProps {
   theme: AppTheme;
   language: Language;
+  intensity: Intensity;
   displayName: string;
-  onSave: (theme: AppTheme, language: Language, displayName: string) => void;
+  onSave: (theme: AppTheme, language: Language, displayName: string, intensity: Intensity) => void;
 }
 
 const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [
@@ -24,9 +25,10 @@ const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[
   { id: 'violet', color: 'bg-violet-500', name: { es: 'Violeta', en: 'Violet' } },
 ];
 
-export default function GlobalSettings({ theme, language, displayName, onSave }: GlobalSettingsProps) {
+export default function GlobalSettings({ theme, language, intensity, displayName, onSave }: GlobalSettingsProps) {
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(theme);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
+  const [selectedIntensity, setSelectedIntensity] = useState<Intensity>(intensity || 'medium');
   const [newDisplayName, setNewDisplayName] = useState(displayName);
 
   return (
@@ -104,8 +106,32 @@ export default function GlobalSettings({ theme, language, displayName, onSave }:
           </div>
         </div>
 
+        <div className="space-y-4">
+          <Label className="flex items-center gap-2 text-zinc-300">
+            <Zap className="w-4 h-4" />
+            {t('intensity', selectedLanguage)}
+          </Label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['low', 'medium', 'high', 'extreme'] as Intensity[]).map((level) => (
+              <Button
+                key={level}
+                variant={selectedIntensity === level ? "default" : "outline"}
+                onClick={() => setSelectedIntensity(level)}
+                className={cn(
+                  "h-10 rounded-xl text-xs transition-all",
+                  selectedIntensity === level 
+                    ? "bg-amber-500 text-white border-amber-500" 
+                    : "border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                {t(`intensity${level.charAt(0).toUpperCase() + level.slice(1)}` as any, selectedLanguage)}
+              </Button>
+            ))}
+          </div>
+        </div>
+
         <Button
-          onClick={() => onSave(selectedTheme, selectedLanguage, newDisplayName)}
+          onClick={() => onSave(selectedTheme, selectedLanguage, newDisplayName, selectedIntensity)}
           className="w-full bg-[var(--brand)] hover:opacity-90 text-white font-bold py-6 rounded-xl shadow-lg shadow-[var(--brand)]/20"
         >
           {selectedLanguage === 'es' ? 'Guardar Cambios' : 'Save Changes'}

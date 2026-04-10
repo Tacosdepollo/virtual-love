@@ -19,6 +19,7 @@ export interface Character {
   avatarUrl?: string;
   isPublic: boolean;
   isNSFW: boolean;
+  tags: string[];
   chatCount: number;
   createdAt: any;
 }
@@ -29,6 +30,7 @@ export interface ChatSession {
   characterId: string;
   characterName: string;
   messages: Message[];
+  coreThoughts?: string[];
   theme?: string;
   lastUpdated: number;
 }
@@ -36,6 +38,7 @@ export interface ChatSession {
 export interface Personality {
   name: string;
   traits: string[];
+  tags: string[];
   style: string;
   description: string;
   customInstructions?: string;
@@ -45,3 +48,5 @@ export interface Personality {
 }
 
 export type AppTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';
+
+export type Intensity = 'low' | 'medium' | 'high' | 'extreme';

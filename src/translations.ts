@@ -33,6 +33,16 @@ export const translations = {
     sfw: "SFW (Todo público)",
     visibility: "Visibilidad",
     contentRating: "Clasificación",
+    tags: "Etiquetas",
+    coreThoughts: "Pensamientos Centrales",
+    coreThoughtsLimit: "Límite de 6 pensamientos alcanzado",
+    pinThought: "Destacar como pensamiento central",
+    unpinThought: "Quitar de pensamientos centrales",
+    intensity: "Intensidad de Conversación",
+    intensityLow: "Tranquila",
+    intensityMedium: "Equilibrada",
+    intensityHigh: "Intensa",
+    intensityExtreme: "Extrema",
   },
   en: {
     appName: "GIMS.ai",
@@ -66,6 +76,16 @@ export const translations = {
     sfw: "SFW (General Audience)",
     visibility: "Visibility",
     contentRating: "Rating",
+    tags: "Tags",
+    coreThoughts: "Core Thoughts",
+    coreThoughtsLimit: "Limit of 6 thoughts reached",
+    pinThought: "Highlight as core thought",
+    unpinThought: "Remove from core thoughts",
+    intensity: "Conversation Intensity",
+    intensityLow: "Calm",
+    intensityMedium: "Balanced",
+    intensityHigh: "Intense",
+    intensityExtreme: "Extreme",
   }
 };
 

@@ -83,10 +83,11 @@ service cloud.firestore {
     }
 
     function isValidCharacter(data) {
-      return data.keys().hasAll(['name', 'description', 'traits', 'style', 'customInstructions', 'creatorId', 'creatorName', 'isPublic', 'isNSFW', 'chatCount', 'createdAt']) &&
+      return data.keys().hasAll(['name', 'description', 'traits', 'tags', 'style', 'customInstructions', 'creatorId', 'creatorName', 'isPublic', 'isNSFW', 'chatCount', 'createdAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.description is string && data.description.size() < 2000 &&
              data.traits is list && data.traits.size() < 20 &&
+             data.tags is list && data.tags.size() < 10 &&
              data.style is string && data.style.size() < 500 &&
              data.customInstructions is string && data.customInstructions.size() < 5000 &&
              data.creatorId is string &&
@@ -98,11 +99,12 @@ service cloud.firestore {
     }
 
     function isValidChat(data) {
-      return data.keys().hasAll(['userId', 'characterId', 'characterName', 'messages', 'lastUpdated']) &&
+      return data.keys().hasAll(['userId', 'characterId', 'characterName', 'messages', 'coreThoughts', 'lastUpdated']) &&
              data.userId == request.auth.uid &&
              data.characterId is string &&
              data.characterName is string &&
              data.messages is list && data.messages.size() < 1000 &&
+             data.coreThoughts is list && data.coreThoughts.size() <= 6 &&
              data.lastUpdated is number;
     }
 

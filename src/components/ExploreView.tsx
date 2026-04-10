@@ -48,7 +48,8 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
   const filteredCharacters = characters.filter(char => {
     const matchesSearch = char.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          char.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         char.traits.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+                         char.traits.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (char.tags || []).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesNSFW = showNSFW ? true : !char.isNSFW;
     return matchesSearch && matchesNSFW;
   });
@@ -145,6 +146,15 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                         </span>
                       ))}
                     </div>
+                    {char.tags && char.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {char.tags.slice(0, 4).map(tag => (
+                          <Badge key={tag} variant="outline" className="text-[9px] py-0 px-1.5 h-4 border-purple-500/30 text-purple-400 bg-purple-500/5">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                   <CardFooter className="pt-0 pb-4 flex items-center justify-between border-t border-zinc-800/50 mt-4">
                     <div className="flex items-center gap-2 text-xs text-zinc-500">
