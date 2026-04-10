@@ -70,3 +70,9 @@ export interface UserStats {
 }
 
 export type Intensity = 'low' | 'medium' | 'high' | 'extreme';
+
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+  }
+}

@@ -60,6 +60,11 @@ export const translations = {
     font: "Fuente de Texto",
     watchAd: "Ver Anuncio (+100 Monedas)",
     adWatching: "Viendo anuncio...",
+    adRewardTitle: "¡Recompensa Lista!",
+    adRewardDesc: "Has ganado 100 monedas por ver el anuncio.",
+    adClaim: "Reclamar Monedas",
+    adError: "Error al cargar el anuncio",
+    adLoading: "Cargando anuncio...",
   },
   en: {
     appName: "GIMS.ai",
@@ -120,6 +125,11 @@ export const translations = {
     font: "Text Font",
     watchAd: "Watch Ad (+100 Coins)",
     adWatching: "Watching ad...",
+    adRewardTitle: "Reward Ready!",
+    adRewardDesc: "You earned 100 coins for watching the ad.",
+    adClaim: "Claim Coins",
+    adError: "Error loading ad",
+    adLoading: "Loading ad...",
   }
 };
 

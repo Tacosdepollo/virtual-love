@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { ShopItem, Language, UserStats } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { Coins, Check, ShoppingBag, Play } from "lucide-react";
+import { Coins, Check, ShoppingBag, Play, Sparkles } from "lucide-react";
 import { t } from "../translations";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
+import RewardedAd from "./RewardedAd";
 
 interface ShopViewProps {
   language: Language;
@@ -29,19 +30,26 @@ export const SHOP_ITEMS: ShopItem[] = [
 ];
 
 export default function ShopView({ language, userStats, onBuy, onAddCoins }: ShopViewProps) {
-  const [isWatchingAd, setIsWatchingAd] = useState(false);
+  const [showAd, setShowAd] = useState(false);
 
   const handleWatchAd = () => {
-    setIsWatchingAd(true);
-    // Simulate ad watching for 3 seconds
-    setTimeout(() => {
-      onAddCoins(100);
-      setIsWatchingAd(false);
-    }, 3000);
+    setShowAd(true);
+  };
+
+  const handleAdComplete = (reward: number) => {
+    onAddCoins(reward);
+    setShowAd(false);
   };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
+      {showAd && (
+        <RewardedAd 
+          language={language} 
+          onComplete={handleAdComplete} 
+          onClose={() => setShowAd(false)} 
+        />
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between bg-zinc-900/20 p-6 rounded-2xl border border-zinc-800/50 backdrop-blur-xl gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading text-zinc-100 flex items-center gap-3">
@@ -54,11 +62,11 @@ export default function ShopView({ language, userStats, onBuy, onAddCoins }: Sho
         <div className="flex items-center gap-4">
           <Button 
             onClick={handleWatchAd} 
-            disabled={isWatchingAd}
-            className="bg-amber-500 hover:bg-amber-600 text-black font-bold gap-2 rounded-xl h-12 px-6 shadow-lg shadow-amber-500/20"
+            className="bg-amber-500 hover:bg-amber-600 text-black font-bold gap-2 rounded-xl h-12 px-6 shadow-lg shadow-amber-500/20 group overflow-hidden relative"
           >
-            <Play className={cn("w-4 h-4", isWatchingAd && "animate-pulse")} />
-            {isWatchingAd ? t('adWatching', language) : t('watchAd', language)}
+            <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+            <Play className="w-4 h-4 fill-black" />
+            {t('watchAd', language)}
           </Button>
 
           <div className="flex items-center gap-2 bg-zinc-800 px-4 py-2 rounded-full border border-zinc-700 shadow-inner h-12">
@@ -67,35 +75,6 @@ export default function ShopView({ language, userStats, onBuy, onAddCoins }: Sho
           </div>
         </div>
       </div>
-
-      <AnimatePresence>
-        {isWatchingAd && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-          >
-            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl">
-              <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
-                <Play className="w-10 h-10 text-amber-500 animate-pulse" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">{t('adWatching', language)}</h2>
-                <p className="text-zinc-400">Gracias por apoyar GIMS.ai. Recibirás tus monedas en unos segundos.</p>
-              </div>
-              <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 3, ease: "linear" }}
-                  className="bg-amber-500 h-full"
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {SHOP_ITEMS.map((item) => {
@@ -119,10 +98,19 @@ export default function ShopView({ language, userStats, onBuy, onAddCoins }: Sho
                 <CardContent className="flex-1 py-4">
                   {item.type === 'theme' && (
                     <div 
-                      className="w-full h-24 rounded-lg border border-zinc-700 flex items-center justify-center"
-                      style={{ backgroundColor: item.previewColor }}
+                      className="w-full h-24 rounded-lg border border-zinc-700 flex items-center justify-center overflow-hidden relative"
+                      data-theme={item.value}
                     >
-                      <span className="text-xs font-bold mix-blend-difference text-white opacity-50 uppercase tracking-tighter">Preview</span>
+                      <div 
+                        className="absolute inset-0"
+                        style={{ 
+                          backgroundImage: 'var(--bg-image)', 
+                          backgroundRepeat: 'repeat',
+                          backgroundSize: 'var(--bg-size, auto)',
+                          backgroundColor: item.previewColor
+                        }}
+                      />
+                      <span className="relative text-xs font-bold mix-blend-difference text-white opacity-50 uppercase tracking-tighter">Preview</span>
                     </div>
                   )}
                   {item.type === 'font' && (

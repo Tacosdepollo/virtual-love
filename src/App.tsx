@@ -6,10 +6,11 @@ import ChatWindow from "./components/ChatWindow";
 import ExploreView from "./components/ExploreView";
 import ShopView from "./components/ShopView";
 import PersonalizationView from "./components/PersonalizationView";
+import CreateCharacterView from "./components/CreateCharacterView";
 import LegalView from "./components/LegalView";
-import PersonalitySettings from "./components/PersonalitySettings";
 import GlobalSettings from "./components/GlobalSettings";
 import ErrorBoundary from "./components/ErrorBoundary";
+import RewardedAd from "./components/RewardedAd";
 import { SHOP_ITEMS } from "./components/ShopView";
 import { Dialog, DialogContent } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
@@ -35,7 +36,7 @@ export default function App() {
   const [theme, setTheme] = useState<AppTheme>('sky');
   const [font, setFont] = useState<AppFont>('sans');
   const [intensity, setIntensity] = useState<Intensity>('medium');
-  const [view, setView] = useState<'explore' | 'chat' | 'legal' | 'shop' | 'personalization'>('explore');
+  const [view, setView] = useState<'explore' | 'chat' | 'legal' | 'shop' | 'personalization' | 'create'>('explore');
   const [userStats, setUserStats] = useState<UserStats>({
     coins: 1000, // Initial coins for testing
     purchasedItems: [],
@@ -47,6 +48,7 @@ export default function App() {
   const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAd, setShowAd] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
 
   // Auth Listener
@@ -269,7 +271,7 @@ export default function App() {
     }
     audioManager.play('click');
     setActiveCharacter(null);
-    setIsPersonalitySettingsOpen(true);
+    setView('create');
   };
 
   const handleSaveCharacter = async (personality: Personality, characterTheme: AppTheme, newLang: Language) => {
@@ -303,7 +305,11 @@ export default function App() {
       handleSelectCharacter({ id: charRef.id, ...charData } as Character);
     }
     
-    setIsPersonalitySettingsOpen(false);
+    // Redirect to explore or chat is handled by handleSelectCharacter for new bots
+    // For existing bots, we might want to stay or go back
+    if (activeCharacter) {
+      setView('chat');
+    }
   };
 
   const handleDeleteCharacter = async () => {
@@ -327,13 +333,11 @@ export default function App() {
     }
   };
 
-  const handleSaveGlobalSettings = async (newTheme: AppTheme, newLang: Language, newDisplayName: string, newIntensity: Intensity) => {
+  const handleSaveGlobalSettings = async (newLang: Language, newDisplayName: string, newIntensity: Intensity) => {
     audioManager.play('click');
-    setTheme(newTheme);
     setLanguage(newLang);
     setIntensity(newIntensity);
     localStorage.setItem(LANG_STORAGE_KEY, newLang);
-    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     localStorage.setItem(INTENSITY_STORAGE_KEY, newIntensity);
 
     if (user && newDisplayName !== user.displayName) {
@@ -348,6 +352,54 @@ export default function App() {
     }
 
     setIsGlobalSettingsOpen(false);
+  };
+
+  const handleResetAccount = async () => {
+    if (!user) return;
+    
+    const confirmMsg = language === 'es' 
+      ? "¿ESTÁS SEGURO? Esto borrará todas tus conversaciones y reseteará tu inventario y monedas. Esta acción no se puede deshacer."
+      : "ARE YOU SURE? This will delete all your conversations and reset your inventory and coins. This action cannot be undone.";
+    
+    if (window.confirm(confirmMsg)) {
+      try {
+        setIsLoading(true);
+        audioManager.play('click');
+
+        // 1. Delete all chats
+        const chatDocs = sessions.filter(s => s.userId === user.uid);
+        for (const session of chatDocs) {
+          await deleteDoc(doc(db, "chats", session.id));
+        }
+
+        // 2. Reset user stats
+        const initialStats: UserStats = {
+          coins: 1000,
+          purchasedItems: [],
+          currentFont: 'sans',
+          unlockedThemes: [],
+          themeOpacity: 0.6
+        };
+        
+        await updateDoc(doc(db, "users", user.uid), { stats: initialStats });
+        setUserStats(initialStats);
+        setTheme('sky');
+        setFont('sans');
+        localStorage.setItem(THEME_STORAGE_KEY, 'sky');
+        localStorage.setItem(FONT_STORAGE_KEY, 'sans');
+
+        setCurrentSessionId("");
+        setView('explore');
+        setIsGlobalSettingsOpen(false);
+        
+        alert(language === 'es' ? "Cuenta reseteada con éxito." : "Account reset successfully.");
+      } catch (error) {
+        console.error("Error resetting account:", error);
+        alert(language === 'es' ? "Error al resetear la cuenta." : "Error resetting account.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
   const handleBuyItem = async (item: ShopItem) => {
@@ -435,6 +487,18 @@ export default function App() {
     await updateDoc(doc(db, "users", user.uid), { stats: newStats });
   };
 
+  const handleAdComplete = async (reward: number) => {
+    if (!user) return;
+    audioManager.play('pop');
+    const newStats = {
+      ...userStats,
+      coins: userStats.coins + reward,
+    };
+    setUserStats(newStats);
+    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+    setShowAd(false);
+  };
+
   return (
     <ErrorBoundary>
       <div 
@@ -518,6 +582,18 @@ export default function App() {
             <div className="flex items-center gap-2">
               <Button 
                 variant="ghost" 
+                className={cn("gap-2 rounded-full", view === 'create' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                onClick={() => {
+                  audioManager.play('click');
+                  setView('create');
+                }}
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">{language === 'es' ? 'Crear' : 'Create'}</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
                 className={cn("gap-2 rounded-full", view === 'explore' && "text-[var(--brand)] bg-[var(--brand)]/10")}
                 onClick={() => {
                   audioManager.play('click');
@@ -561,20 +637,28 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <div 
                     className={cn(
-                      "hidden sm:flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-800",
-                      isAdmin && "cursor-pointer hover:border-amber-500/50 transition-colors"
+                      "flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-800 cursor-pointer hover:border-amber-500/50 transition-colors group relative overflow-hidden",
+                      isAdmin && "hover:border-amber-500"
                     )}
-                    onClick={() => isAdmin && handleAddCoins(1000)}
-                    title={isAdmin ? (language === 'es' ? "Click para +1000 monedas (Admin)" : "Click for +1000 coins (Admin)") : undefined}
+                    onClick={() => {
+                      if (isAdmin) {
+                        handleAddCoins(1000);
+                      } else {
+                        setShowAd(true);
+                      }
+                    }}
+                    title={isAdmin ? (language === 'es' ? "Click para +1000 monedas (Admin)" : "Click for +1000 coins (Admin)") : (language === 'es' ? "Ver anuncio para ganar monedas" : "Watch ad to earn coins")}
                   >
-                    <Coins className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm font-bold text-amber-100">{userStats.coins}</span>
+                    <div className="absolute inset-0 bg-amber-500/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-300" />
+                    <Coins className="w-4 h-4 text-amber-400 relative z-10" />
+                    <span className="text-sm font-bold text-amber-100 relative z-10">{userStats.coins}</span>
+                    {!isAdmin && <Plus className="w-3 h-3 text-amber-500 ml-0.5 relative z-10" />}
                   </div>
                   <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
                     <Plus className="w-5 h-5 text-[var(--brand)]" />
                   </Button>
                   {view === 'chat' && currentSession && activeCharacter && activeCharacter.creatorId === user.uid && (
-                    <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setIsPersonalitySettingsOpen(true)}>
+                    <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setView('create')}>
                       <Settings className="w-5 h-5 text-zinc-400" />
                     </Button>
                   )}
@@ -641,6 +725,24 @@ export default function App() {
                   onUpdateOpacity={handleUpdateOpacity}
                 />
               </motion.div>
+            ) : view === 'create' ? (
+              <motion.div
+                key="create"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <CreateCharacterView 
+                  personality={activeCharacter || { name: "", traits: [], tags: [], style: "", description: "", isPublic: true, isNSFW: false }}
+                  theme={theme}
+                  language={language}
+                  onSave={handleSaveCharacter}
+                  onDelete={handleDeleteCharacter}
+                  isCreator={!activeCharacter || activeCharacter.creatorId === user?.uid}
+                  onBack={() => setView('explore')}
+                />
+              </motion.div>
             ) : view === 'legal' ? (
               <motion.div
                 key="legal"
@@ -688,28 +790,23 @@ export default function App() {
         <Dialog open={isGlobalSettingsOpen} onOpenChange={setIsGlobalSettingsOpen}>
           <DialogContent className="max-w-md p-0 bg-transparent border-none w-[95vw]">
             <GlobalSettings
-              theme={theme}
               language={language}
               intensity={intensity}
               displayName={user?.displayName || ""}
               onSave={handleSaveGlobalSettings}
+              onResetAccount={handleResetAccount}
             />
           </DialogContent>
         </Dialog>
 
-        {/* Personality Settings Dialog (Character Creation/Editing) */}
-        <Dialog open={isPersonalitySettingsOpen} onOpenChange={setIsPersonalitySettingsOpen}>
-          <DialogContent className="max-w-2xl p-0 bg-transparent border-none w-[95vw] md:w-full">
-            <PersonalitySettings
-              personality={activeCharacter || { name: "", traits: [], tags: [], style: "", description: "", isPublic: true, isNSFW: false }}
-              theme={theme}
-              language={language}
-              onSave={handleSaveCharacter}
-              onDelete={handleDeleteCharacter}
-              isCreator={!activeCharacter || activeCharacter.creatorId === user?.uid}
-            />
-          </DialogContent>
-        </Dialog>
+        {/* Rewarded Ad Overlay */}
+        {showAd && (
+          <RewardedAd 
+            language={language}
+            onComplete={handleAdComplete}
+            onClose={() => setShowAd(false)}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

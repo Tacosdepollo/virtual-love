@@ -3,7 +3,7 @@ import { AppTheme, Language, Intensity } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
-import { Settings, Palette, Check, Globe, User, Zap } from "lucide-react";
+import { Settings, Palette, Check, Globe, User, Zap, AlertTriangle, Trash2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import { Input } from "./ui/input";
@@ -13,20 +13,13 @@ interface GlobalSettingsProps {
   language: Language;
   intensity: Intensity;
   displayName: string;
-  onSave: (theme: AppTheme, language: Language, displayName: string, intensity: Intensity) => void;
+  onSave: (language: Language, displayName: string, intensity: Intensity) => void;
+  onResetAccount: () => void;
 }
 
-const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [
-  { id: 'rose', color: 'bg-rose-500', name: { es: 'Rosa', en: 'Rose' } },
-  { id: 'emerald', color: 'bg-emerald-500', name: { es: 'Esmeralda', en: 'Emerald' } },
-  { id: 'amber', color: 'bg-amber-500', name: { es: 'Ámbar', en: 'Amber' } },
-  { id: 'sky', color: 'bg-sky-500', name: { es: 'Cielo', en: 'Sky' } },
-  { id: 'space', color: 'bg-indigo-900', name: { es: 'Espacio', en: 'Space' } },
-  { id: 'retro', color: 'bg-zinc-800', name: { es: 'Retro', en: 'Retro' } },
-];
+const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [];
 
-export default function GlobalSettings({ theme, language, intensity, displayName, onSave }: GlobalSettingsProps) {
-  const [selectedTheme, setSelectedTheme] = useState<AppTheme>(theme);
+export default function GlobalSettings({ language, intensity, displayName, onSave, onResetAccount }: Omit<GlobalSettingsProps, 'theme'>) {
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
   const [selectedIntensity, setSelectedIntensity] = useState<Intensity>(intensity || 'medium');
   const [newDisplayName, setNewDisplayName] = useState(displayName);
@@ -82,32 +75,6 @@ export default function GlobalSettings({ theme, language, intensity, displayName
 
         <div className="space-y-4">
           <Label className="flex items-center gap-2 text-zinc-300">
-            <Palette className="w-4 h-4" />
-            {t('theme', selectedLanguage)}
-          </Label>
-          <div className="grid grid-cols-3 gap-3">
-            {THEMES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setSelectedTheme(t.id)}
-                className={cn(
-                  "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all",
-                  selectedTheme === t.id 
-                    ? "border-[var(--brand)] bg-[var(--brand)]/10" 
-                    : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
-                )}
-              >
-                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", t.color)}>
-                  {selectedTheme === t.id && <Check className="w-4 h-4 text-white" />}
-                </div>
-                <span className="text-[10px] font-medium text-zinc-400">{t.name[selectedLanguage]}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <Label className="flex items-center gap-2 text-zinc-300">
             <Zap className="w-4 h-4" />
             {t('intensity', selectedLanguage)}
           </Label>
@@ -130,12 +97,36 @@ export default function GlobalSettings({ theme, language, intensity, displayName
           </div>
         </div>
 
-        <Button
-          onClick={() => onSave(selectedTheme, selectedLanguage, newDisplayName, selectedIntensity)}
-          className="w-full bg-[var(--brand)] hover:opacity-90 text-white font-bold py-6 rounded-xl shadow-lg shadow-[var(--brand)]/20"
-        >
-          {selectedLanguage === 'es' ? 'Guardar Cambios' : 'Save Changes'}
-        </Button>
+        <div className="space-y-4">
+          <Button
+            onClick={() => onSave(selectedLanguage, newDisplayName, selectedIntensity)}
+            className="w-full bg-[var(--brand)] hover:opacity-90 text-white font-bold py-6 rounded-xl shadow-lg shadow-[var(--brand)]/20"
+          >
+            {selectedLanguage === 'es' ? 'Guardar Cambios' : 'Save Changes'}
+          </Button>
+
+          <div className="pt-4 border-t border-zinc-800/50">
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                {selectedLanguage === 'es' ? 'Zona de Peligro' : 'Danger Zone'}
+              </div>
+              <p className="text-[10px] text-zinc-500 leading-relaxed">
+                {selectedLanguage === 'es' 
+                  ? 'Esta acción borrará todas tus conversaciones, inventario y reseteará tus monedas. Solo úsalo para pruebas.' 
+                  : 'This action will delete all your conversations, inventory and reset your coins. Only use for testing.'}
+              </p>
+              <Button
+                variant="outline"
+                onClick={onResetAccount}
+                className="w-full border-red-500/30 hover:bg-red-500/10 text-red-400 hover:text-red-300 gap-2 h-10 rounded-xl text-xs"
+              >
+                <Trash2 className="w-4 h-4" />
+                {selectedLanguage === 'es' ? 'Resetear Cuenta' : 'Reset Account'}
+              </Button>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
