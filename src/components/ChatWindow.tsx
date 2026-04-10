@@ -8,6 +8,7 @@ import { Send, User, Bot, Loader2, Pin, PinOff, BrainCircuit, X } from "lucide-r
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
+import { audioManager } from "../lib/audio";
 import Markdown from "react-markdown";
 
 interface ChatWindowProps {
@@ -41,8 +42,19 @@ export default function ChatWindow({
     }
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    let interval: any;
+    if (isLoading) {
+      interval = setInterval(() => {
+        audioManager.play('typing', 0.1);
+      }, 450);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   const handleSend = () => {
     if (input.trim() && !isLoading) {
+      audioManager.play('click');
       onSendMessage(input.trim());
       setInput("");
     }

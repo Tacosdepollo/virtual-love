@@ -17,6 +17,7 @@ import { auth, db, signInWithGoogle, handleFirestoreError, OperationType } from 
 import { onAuthStateChanged, User, updateProfile } from "firebase/auth";
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, setDoc, deleteDoc, Timestamp } from "firebase/firestore";
 import { cn } from "./lib/utils";
+import { audioManager } from "./lib/audio";
 
 const LANG_STORAGE_KEY = "gams_language";
 const THEME_STORAGE_KEY = "gams_theme";
@@ -124,6 +125,7 @@ export default function App() {
     });
 
     setIsLoading(true);
+    audioManager.play('typing', 0.2);
 
     try {
       const aiResponseContent = await generateChatResponse(
@@ -163,10 +165,12 @@ export default function App() {
     if (existing) {
       setCurrentSessionId(existing.id);
       setView('chat');
+      audioManager.play('pop');
       return;
     }
 
     // Create new session
+    audioManager.play('pop');
     const chatRef = await addDoc(collection(db, "chats"), {
       userId: user.uid,
       characterId: character.id,
@@ -215,6 +219,7 @@ export default function App() {
       signInWithGoogle();
       return;
     }
+    audioManager.play('click');
     setActiveCharacter(null);
     setIsPersonalitySettingsOpen(true);
   };
@@ -275,6 +280,7 @@ export default function App() {
   };
 
   const handleSaveGlobalSettings = async (newTheme: AppTheme, newLang: Language, newDisplayName: string, newIntensity: Intensity) => {
+    audioManager.play('click');
     setTheme(newTheme);
     setLanguage(newLang);
     setIntensity(newIntensity);
@@ -314,16 +320,19 @@ export default function App() {
             currentSessionId={currentSessionId}
             language={language}
             onSelectSession={(id) => {
+              audioManager.play('pop');
               setCurrentSessionId(id);
               setView('chat');
               setIsSidebarOpen(false);
             }}
             onNewSession={() => {
+              audioManager.play('click');
               setView('explore');
               setIsSidebarOpen(false);
             }}
             onDeleteSession={async (id) => {
               if (window.confirm(t('deleteConfirm', language))) {
+                audioManager.play('click');
                 await deleteDoc(doc(db, "chats", id));
                 if (currentSessionId === id) {
                   setCurrentSessionId("");
@@ -331,8 +340,12 @@ export default function App() {
                 }
               }
             }}
-            onOpenSettings={() => setIsGlobalSettingsOpen(true)}
+            onOpenSettings={() => {
+              audioManager.play('click');
+              setIsGlobalSettingsOpen(true);
+            }}
             onOpenLegal={() => {
+              audioManager.play('click');
               setView('legal');
               setIsSidebarOpen(false);
             }}
@@ -348,7 +361,10 @@ export default function App() {
               <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(true)}>
                 <Menu className="w-6 h-6" />
               </Button>
-              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('explore')}>
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                audioManager.play('click');
+                setView('explore');
+              }}>
                 <Heart className="w-6 h-6 text-[var(--brand)]" />
                 <span className="text-xl font-bold font-heading tracking-tight">GIMS.ai</span>
               </div>
@@ -358,7 +374,10 @@ export default function App() {
               <Button 
                 variant="ghost" 
                 className={cn("gap-2 rounded-full", view === 'explore' && "text-[var(--brand)] bg-[var(--brand)]/10")}
-                onClick={() => setView('explore')}
+                onClick={() => {
+                  audioManager.play('click');
+                  setView('explore');
+                }}
               >
                 <Compass className="w-4 h-4" />
                 <span className="hidden sm:inline">{language === 'es' ? 'Explorar' : 'Explore'}</span>

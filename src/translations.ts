@@ -43,6 +43,7 @@ export const translations = {
     intensityMedium: "Equilibrada",
     intensityHigh: "Intensa",
     intensityExtreme: "Extrema",
+    joinDiscord: "Unirse al Discord",
   },
   en: {
     appName: "GIMS.ai",
@@ -86,6 +87,7 @@ export const translations = {
     intensityMedium: "Balanced",
     intensityHigh: "Intense",
     intensityExtreme: "Extreme",
+    joinDiscord: "Join Discord",
   }
 };
 

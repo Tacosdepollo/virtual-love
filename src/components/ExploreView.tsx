@@ -11,6 +11,7 @@ import { t } from "../translations";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { cn } from "../lib/utils";
+import { audioManager } from "../lib/audio";
 
 interface ExploreViewProps {
   language: Language;
@@ -77,14 +78,22 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <Input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (e.target.value.length % 3 === 0) {
+                  audioManager.play('search', 0.1);
+                }
+              }}
               placeholder={t('search', language)}
               className="pl-10 bg-zinc-900/50 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl"
             />
           </div>
           <Button
             variant={showNSFW ? "default" : "outline"}
-            onClick={() => setShowNSFW(!showNSFW)}
+            onClick={() => {
+              audioManager.play('click');
+              setShowNSFW(!showNSFW);
+            }}
             className={cn(
               "h-12 px-6 rounded-xl gap-2",
               showNSFW ? "bg-red-500 hover:bg-red-600" : "border-zinc-800 text-zinc-400"
