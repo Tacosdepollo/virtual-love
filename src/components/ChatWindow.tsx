@@ -43,13 +43,21 @@ export default function ChatWindow({
   }, [messages, isLoading]);
 
   useEffect(() => {
-    let interval: any;
+    let timeout: any;
+    const playTypingSound = () => {
+      if (isLoading) {
+        audioManager.play('typing', 0.05);
+        // Slower delay: between 200ms and 400ms for a softer feel
+        const nextDelay = Math.random() * 200 + 200;
+        timeout = setTimeout(playTypingSound, nextDelay);
+      }
+    };
+    
     if (isLoading) {
-      interval = setInterval(() => {
-        audioManager.play('typing', 0.1);
-      }, 450);
+      playTypingSound();
     }
-    return () => clearInterval(interval);
+    
+    return () => clearTimeout(timeout);
   }, [isLoading]);
 
   const handleSend = () => {

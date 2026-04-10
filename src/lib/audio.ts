@@ -1,7 +1,7 @@
 const SOUNDS = {
   click: "https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3",
   pop: "https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3",
-  typing: "https://assets.mixkit.co/active_storage/sfx/2567/2567-preview.mp3",
+  typing: "https://assets.mixkit.co/active_storage/sfx/1384/1384-preview.mp3",
   search: "https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3",
   transition: "https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3"
 };
