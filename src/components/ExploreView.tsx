@@ -85,7 +85,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                 }
               }}
               placeholder={t('search', language)}
-              className="pl-10 bg-zinc-900/50 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl"
+              className="pl-10 bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 focus:ring-[var(--brand)] h-12 rounded-xl"
             />
           </div>
           <Button
@@ -119,7 +119,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
               >
-                <Card className="bg-zinc-900/40 border-zinc-800 hover:border-[var(--brand)]/50 transition-all cursor-pointer group h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => onSelectCharacter(char)}>
+                <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer group h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => onSelectCharacter(char)}>
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <Avatar className="w-16 h-16 border-2 border-[var(--brand)]/20 group-hover:border-[var(--brand)]/50 transition-colors">

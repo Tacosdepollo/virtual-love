@@ -17,12 +17,12 @@ interface GlobalSettingsProps {
 }
 
 const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [
-  { id: 'indigo', color: 'bg-indigo-500', name: { es: 'Índigo', en: 'Indigo' } },
   { id: 'rose', color: 'bg-rose-500', name: { es: 'Rosa', en: 'Rose' } },
   { id: 'emerald', color: 'bg-emerald-500', name: { es: 'Esmeralda', en: 'Emerald' } },
   { id: 'amber', color: 'bg-amber-500', name: { es: 'Ámbar', en: 'Amber' } },
   { id: 'sky', color: 'bg-sky-500', name: { es: 'Cielo', en: 'Sky' } },
-  { id: 'violet', color: 'bg-violet-500', name: { es: 'Violeta', en: 'Violet' } },
+  { id: 'space', color: 'bg-indigo-900', name: { es: 'Espacio', en: 'Space' } },
+  { id: 'retro', color: 'bg-zinc-800', name: { es: 'Retro', en: 'Retro' } },
 ];
 
 export default function GlobalSettings({ theme, language, intensity, displayName, onSave }: GlobalSettingsProps) {

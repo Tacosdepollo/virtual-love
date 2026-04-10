@@ -47,6 +47,26 @@ export interface Personality {
   isNSFW: boolean;
 }
 
-export type AppTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';
+export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood';
+
+export type AppFont = 'sans' | 'audiowide' | 'jacquard' | 'montecarlo' | 'saira' | 'silkscreen';
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  type: 'theme' | 'font' | 'sound';
+  value: string; // The theme name, font family, or sound URL
+  previewColor?: string;
+}
+
+export interface UserStats {
+  coins: number;
+  purchasedItems: string[]; // IDs of ShopItems
+  currentFont: AppFont;
+  unlockedThemes: AppTheme[];
+  themeOpacity?: number;
+}
 
 export type Intensity = 'low' | 'medium' | 'high' | 'extreme';

@@ -46,10 +46,14 @@ export default function ChatWindow({
     let timeout: any;
     const playTypingSound = () => {
       if (isLoading) {
-        audioManager.play('typing', 0.05);
-        // Slower delay: between 200ms and 400ms for a softer feel
-        const nextDelay = Math.random() * 200 + 200;
-        timeout = setTimeout(playTypingSound, nextDelay);
+        // Audio is 15s long. We want a 2s clip.
+        // Random start time between 0 and 13s (15 - 2)
+        const randomStart = Math.random() * 13;
+        audioManager.play('typing', 0.1, randomStart, 2);
+        
+        // Play the next clip after 2 seconds to avoid too much overlap
+        // but keep it continuous while loading
+        timeout = setTimeout(playTypingSound, 2000);
       }
     };
     
@@ -57,7 +61,10 @@ export default function ChatWindow({
       playTypingSound();
     }
     
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(timeout);
+      audioManager.stop('typing');
+    };
   }, [isLoading]);
 
   const handleSend = () => {
@@ -69,9 +76,9 @@ export default function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 max-w-4xl mx-auto w-full bg-zinc-950/30 backdrop-blur-sm rounded-2xl border border-zinc-800/50 overflow-hidden shadow-2xl">
+    <div className="flex flex-col flex-1 min-h-0 max-w-4xl mx-auto w-full bg-zinc-950/10 backdrop-blur-sm rounded-2xl border border-zinc-800/30 overflow-hidden shadow-2xl">
       {/* Header - Hidden on mobile as App.tsx provides a mobile header */}
-      <div className="hidden md:flex p-4 border-b border-zinc-800 bg-zinc-900/50 items-center justify-between shrink-0">
+      <div className="hidden md:flex p-4 border-b border-zinc-800/30 bg-zinc-900/20 items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 border-2 border-[var(--brand)]/50">
             <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
@@ -232,7 +239,7 @@ export default function ChatWindow({
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="p-4 bg-zinc-900/80 backdrop-blur-md border-t border-zinc-800 shrink-0">
+      <div className="p-4 bg-zinc-900/40 backdrop-blur-md border-t border-zinc-800/30 shrink-0">
         <div className="flex gap-2 max-w-3xl mx-auto">
           <Input
             value={input}

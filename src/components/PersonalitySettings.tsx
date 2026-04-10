@@ -6,9 +6,10 @@ import { Textarea } from "./ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
-import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle, Upload, Camera } from "lucide-react";
+import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle, Upload, Camera, HelpCircle } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
+import CharacterCreationHelp from "./CharacterCreationHelp";
 
 interface PersonalitySettingsProps {
   personality: Personality;
@@ -20,12 +21,12 @@ interface PersonalitySettingsProps {
 }
 
 const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [
-  { id: 'indigo', color: 'bg-indigo-500', name: { es: 'Índigo', en: 'Indigo' } },
   { id: 'rose', color: 'bg-rose-500', name: { es: 'Rosa', en: 'Rose' } },
   { id: 'emerald', color: 'bg-emerald-500', name: { es: 'Esmeralda', en: 'Emerald' } },
   { id: 'amber', color: 'bg-amber-500', name: { es: 'Ámbar', en: 'Amber' } },
   { id: 'sky', color: 'bg-sky-500', name: { es: 'Cielo', en: 'Sky' } },
-  { id: 'violet', color: 'bg-violet-500', name: { es: 'Violeta', en: 'Violet' } },
+  { id: 'space', color: 'bg-indigo-900', name: { es: 'Espacio', en: 'Space' } },
+  { id: 'retro', color: 'bg-zinc-800', name: { es: 'Retro', en: 'Retro' } },
 ];
 
 export default function PersonalitySettings({ personality, theme, language, onSave, onDelete, isCreator }: PersonalitySettingsProps) {
@@ -40,6 +41,7 @@ export default function PersonalitySettings({ personality, theme, language, onSa
   const [newTag, setNewTag] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleAddTrait = () => {
     if (newTrait.trim() && !edited.traits.includes(newTrait.trim())) {
@@ -114,17 +116,42 @@ export default function PersonalitySettings({ personality, theme, language, onSa
   return (
     <Card className="w-full max-w-2xl mx-auto border-none shadow-2xl bg-zinc-950/50 backdrop-blur-xl text-zinc-100 max-h-[90vh] flex flex-col">
       <CardHeader className="shrink-0">
-        <CardTitle className="flex items-center gap-2 text-2xl font-bold font-heading">
-          <Sparkles className="w-6 h-6 text-[var(--brand)]" />
-          {selectedLanguage === 'es' ? 'Configurar Personalidad' : 'Configure Personality'}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-2xl font-bold font-heading">
+            <Sparkles className="w-6 h-6 text-[var(--brand)]" />
+            {selectedLanguage === 'es' ? 'Configurar Personalidad' : 'Configure Personality'}
+          </CardTitle>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn("rounded-full transition-colors", showHelp ? "text-[var(--brand)] bg-[var(--brand)]/10" : "text-zinc-500")}
+            onClick={() => setShowHelp(!showHelp)}
+          >
+            <HelpCircle className="w-5 h-5" />
+          </Button>
+        </div>
         <CardDescription className="text-zinc-400">
           {selectedLanguage === 'es' 
             ? 'Define cómo quieres que sea tu amiga virtual. Sé específico para mejores resultados.' 
             : 'Define how you want your virtual friend to be. Be specific for better results.'}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+      <CardContent className="space-y-6 overflow-y-auto flex-1 custom-scrollbar relative">
+        {showHelp && (
+          <div className="absolute inset-x-0 top-0 z-50 p-4 animate-in fade-in slide-in-from-top-4">
+            <div className="relative">
+              <CharacterCreationHelp language={selectedLanguage} />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-2 right-2 rounded-full h-8 w-8 bg-black/20 hover:bg-black/40 text-white"
+                onClick={() => setShowHelp(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="name">{t('personalityName', selectedLanguage)}</Label>

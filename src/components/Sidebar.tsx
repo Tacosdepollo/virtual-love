@@ -43,7 +43,7 @@ export default function Sidebar({
       )}
 
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col transition-transform duration-300 md:relative md:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950/30 backdrop-blur-xl border-r border-zinc-800/30 flex flex-col transition-transform duration-300 md:relative md:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-4 flex items-center justify-between md:hidden">

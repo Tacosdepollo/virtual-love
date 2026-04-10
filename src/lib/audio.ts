@@ -1,13 +1,14 @@
 const SOUNDS = {
   click: "https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3",
-  pop: "https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3",
-  typing: "https://assets.mixkit.co/active_storage/sfx/1384/1384-preview.mp3",
+  pop: "https://www.soundjay.com/buttons/sounds/button-3.mp3",
+  typing: "/typing.wav",
   search: "https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3",
   transition: "https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3"
 };
 
 class AudioManager {
   private audios: Map<string, HTMLAudioElement> = new Map();
+  private activeInstances: Map<string, Set<HTMLAudioElement>> = new Map();
   private enabled: boolean = true;
 
   constructor() {
@@ -17,21 +18,72 @@ class AudioManager {
         const audio = new Audio(url);
         audio.preload = "auto";
         this.audios.set(key, audio);
+        this.activeInstances.set(key, new Set());
       });
     }
   }
 
-  play(soundName: keyof typeof SOUNDS, volume: number = 0.4) {
+  play(soundName: keyof typeof SOUNDS, volume: number = 0.4, startTime?: number, duration?: number) {
     if (!this.enabled) return;
     
-    const audio = this.audios.get(soundName);
-    if (audio) {
-      // Clone to allow overlapping sounds
-      const clone = audio.cloneNode() as HTMLAudioElement;
-      clone.volume = volume;
-      clone.play().catch(() => {
-        // Ignore errors (usually due to user not interacting yet)
+    const url = SOUNDS[soundName];
+    if (!url) return;
+
+    try {
+      const audio = new Audio(url);
+      audio.volume = volume;
+      
+      const instances = this.activeInstances.get(soundName);
+      if (instances) instances.add(audio);
+
+      const cleanup = () => {
+        if (instances) instances.delete(audio);
+        audio.remove();
+      };
+
+      audio.addEventListener('ended', cleanup, { once: true });
+      
+      const startPlayback = () => {
+        if (startTime !== undefined) {
+          audio.currentTime = startTime;
+        }
+        audio.play().catch(err => {
+          // Silence all audio errors as requested
+        });
+      };
+
+      if (startTime !== undefined) {
+        if (audio.readyState >= 1) {
+          startPlayback();
+        } else {
+          audio.addEventListener('loadedmetadata', startPlayback, { once: true });
+        }
+      } else {
+        startPlayback();
+      }
+
+      if (duration !== undefined) {
+        audio.addEventListener('play', () => {
+          setTimeout(() => {
+            audio.pause();
+            cleanup();
+          }, duration * 1000);
+        }, { once: true });
+      }
+    } catch (err) {
+      // Silence initialization errors
+    }
+  }
+
+  stop(soundName: keyof typeof SOUNDS) {
+    const instances = this.activeInstances.get(soundName);
+    if (instances) {
+      instances.forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.remove();
       });
+      instances.clear();
     }
   }
 

@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { Message, Character, ChatSession, Language, AppTheme, Personality, Intensity } from "./types";
+import { Message, Character, ChatSession, Language, AppTheme, Personality, Intensity, UserStats, AppFont, ShopItem } from "./types";
 import { generateChatResponse } from "./services/aiService";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import ExploreView from "./components/ExploreView";
+import ShopView from "./components/ShopView";
+import PersonalizationView from "./components/PersonalizationView";
 import LegalView from "./components/LegalView";
 import PersonalitySettings from "./components/PersonalitySettings";
 import GlobalSettings from "./components/GlobalSettings";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { SHOP_ITEMS } from "./components/ShopView";
 import { Dialog, DialogContent } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings } from "lucide-react";
+import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings, ShoppingBag, Palette, Coins } from "lucide-react";
 import { t } from "./translations";
 import { auth, db, signInWithGoogle, handleFirestoreError, OperationType } from "./lib/firebase";
 import { onAuthStateChanged, User, updateProfile } from "firebase/auth";
@@ -21,6 +24,7 @@ import { audioManager } from "./lib/audio";
 
 const LANG_STORAGE_KEY = "gams_language";
 const THEME_STORAGE_KEY = "gams_theme";
+const FONT_STORAGE_KEY = "gams_font";
 const INTENSITY_STORAGE_KEY = "gams_intensity";
 
 export default function App() {
@@ -28,9 +32,17 @@ export default function App() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [language, setLanguage] = useState<Language>('es');
-  const [theme, setTheme] = useState<AppTheme>('indigo');
+  const [theme, setTheme] = useState<AppTheme>('sky');
+  const [font, setFont] = useState<AppFont>('sans');
   const [intensity, setIntensity] = useState<Intensity>('medium');
-  const [view, setView] = useState<'explore' | 'chat' | 'legal'>('explore');
+  const [view, setView] = useState<'explore' | 'chat' | 'legal' | 'shop' | 'personalization'>('explore');
+  const [userStats, setUserStats] = useState<UserStats>({
+    coins: 1000, // Initial coins for testing
+    purchasedItems: [],
+    currentFont: 'sans',
+    unlockedThemes: [],
+    themeOpacity: 0.6
+  });
   const [isPersonalitySettingsOpen, setIsPersonalitySettingsOpen] = useState(false);
   const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -44,13 +56,31 @@ export default function App() {
       if (u) {
         // Sync user to Firestore
         const userDoc = doc(db, "users", u.uid);
-        setDoc(userDoc, {
-          uid: u.uid,
-          displayName: u.displayName,
-          email: u.email,
-          photoURL: u.photoURL,
-          createdAt: Timestamp.now()
-        }, { merge: true });
+        getDoc(userDoc).then(snap => {
+          if (!snap.exists() || !snap.data().stats) {
+            setDoc(userDoc, {
+              uid: u.uid,
+              displayName: u.displayName,
+              email: u.email,
+              photoURL: u.photoURL,
+              createdAt: Timestamp.now(),
+              stats: {
+                coins: 1000,
+                purchasedItems: [],
+                currentFont: 'sans',
+                unlockedThemes: [],
+                themeOpacity: 0.6
+              }
+            }, { merge: true });
+          } else {
+            setDoc(userDoc, {
+              uid: u.uid,
+              displayName: u.displayName,
+              email: u.email,
+              photoURL: u.photoURL,
+            }, { merge: true });
+          }
+        });
       } else {
         setSessions([]);
         setCurrentSessionId("");
@@ -68,9 +98,27 @@ export default function App() {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as AppTheme;
     if (savedTheme) setTheme(savedTheme);
 
+    const savedFont = localStorage.getItem(FONT_STORAGE_KEY) as AppFont;
+    if (savedFont) setFont(savedFont);
+
     const savedIntensity = localStorage.getItem(INTENSITY_STORAGE_KEY) as Intensity;
     if (savedIntensity) setIntensity(savedIntensity);
   }, []);
+
+  // Sync user stats from Firestore
+  useEffect(() => {
+    if (!user) return;
+    const userDoc = doc(db, "users", user.uid);
+    const unsubscribe = onSnapshot(userDoc, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.stats) {
+          setUserStats(data.stats);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   // Sessions Listener
   useEffect(() => {
@@ -302,14 +350,111 @@ export default function App() {
     setIsGlobalSettingsOpen(false);
   };
 
+  const handleBuyItem = async (item: ShopItem) => {
+    if (!user || userStats.coins < item.price) return;
+    
+    // Prevent duplicate purchases
+    if (userStats.purchasedItems.includes(item.id)) {
+      alert(language === 'es' ? 'Ya posees este artículo.' : 'You already own this item.');
+      return;
+    }
+
+    audioManager.play('pop');
+    const newStats = {
+      ...userStats,
+      coins: userStats.coins - item.price,
+      purchasedItems: [...userStats.purchasedItems, item.id],
+      unlockedThemes: item.type === 'theme' ? Array.from(new Set([...userStats.unlockedThemes, item.value as AppTheme])) : userStats.unlockedThemes
+    };
+
+    setUserStats(newStats);
+    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+  };
+
+  const handleDeleteTheme = async (themeToDelete: AppTheme) => {
+    if (!user) return;
+    if (['rose', 'emerald', 'amber', 'sky', 'space', 'retro'].includes(themeToDelete)) {
+      alert(language === 'es' ? 'No puedes eliminar temas básicos.' : 'You cannot delete basic themes.');
+      return;
+    }
+
+    if (window.confirm(language === 'es' ? `¿Eliminar tema ${themeToDelete}?` : `Delete theme ${themeToDelete}?`)) {
+      audioManager.play('click');
+      
+      // Find the shop item ID for this theme to remove it from purchasedItems too
+      const shopItem = SHOP_ITEMS.find(item => item.type === 'theme' && item.value === themeToDelete);
+      
+      const newStats = {
+        ...userStats,
+        unlockedThemes: userStats.unlockedThemes.filter(t => t !== themeToDelete),
+        purchasedItems: shopItem ? userStats.purchasedItems.filter(id => id !== shopItem.id) : userStats.purchasedItems
+      };
+
+      if (theme === themeToDelete) {
+        setTheme('sky');
+        localStorage.setItem(THEME_STORAGE_KEY, 'sky');
+      }
+
+      setUserStats(newStats);
+      await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+    }
+  };
+
+  const handleApplyTheme = (newTheme: AppTheme) => {
+    audioManager.play('click');
+    setTheme(newTheme);
+    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+  };
+
+  const handleApplyFont = (newFont: AppFont) => {
+    audioManager.play('click');
+    setFont(newFont);
+    localStorage.setItem(FONT_STORAGE_KEY, newFont);
+  };
+
+  const isAdmin = user?.email === 'dav1degante@gmail.com';
+
+  const handleAddCoins = async (amount: number) => {
+    if (!user || !isAdmin) return;
+    audioManager.play('pop');
+    const newStats = {
+      ...userStats,
+      coins: userStats.coins + amount,
+    };
+    setUserStats(newStats);
+    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+  };
+
+  const handleUpdateOpacity = async (opacity: number) => {
+    if (!user) return;
+    const newStats = {
+      ...userStats,
+      themeOpacity: opacity,
+    };
+    setUserStats(newStats);
+    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+  };
+
   return (
     <ErrorBoundary>
       <div 
-        className="flex h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+        className="flex h-[100dvh] w-full bg-[#050505] text-zinc-100 overflow-hidden font-sans"
         data-theme={theme}
+        style={{ 
+          fontFamily: `var(--font-${font})`,
+          '--bg-opacity': userStats.themeOpacity ?? 0.6
+        } as React.CSSProperties}
       >
         {/* Background Effects */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div 
+            className="absolute inset-0 opacity-[var(--bg-opacity)] transition-opacity duration-500"
+            style={{ 
+              backgroundImage: 'var(--bg-image)', 
+              backgroundRepeat: 'repeat',
+              backgroundSize: 'var(--bg-size, auto)'
+            } as React.CSSProperties}
+          />
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--brand)]/10 blur-[120px] rounded-full transition-colors duration-500" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full" />
         </div>
@@ -356,7 +501,7 @@ export default function App() {
 
         <main className="flex-1 relative flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-zinc-800/50 bg-zinc-950/50 backdrop-blur-md z-10">
+          <div className="flex items-center justify-between p-4 border-b border-zinc-800/30 bg-zinc-950/20 backdrop-blur-xl z-10">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(true)}>
                 <Menu className="w-6 h-6" />
@@ -380,7 +525,31 @@ export default function App() {
                 }}
               >
                 <Compass className="w-4 h-4" />
-                <span className="hidden sm:inline">{language === 'es' ? 'Explorar' : 'Explore'}</span>
+                <span className="hidden sm:inline">{t('search', language)}</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                className={cn("gap-2 rounded-full", view === 'shop' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                onClick={() => {
+                  audioManager.play('click');
+                  setView('shop');
+                }}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('shop', language)}</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                className={cn("gap-2 rounded-full", view === 'personalization' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                onClick={() => {
+                  audioManager.play('click');
+                  setView('personalization');
+                }}
+              >
+                <Palette className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('personalization', language)}</span>
               </Button>
               
               {!user ? (
@@ -390,6 +559,17 @@ export default function App() {
                 </Button>
               ) : (
                 <div className="flex items-center gap-2">
+                  <div 
+                    className={cn(
+                      "hidden sm:flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-800",
+                      isAdmin && "cursor-pointer hover:border-amber-500/50 transition-colors"
+                    )}
+                    onClick={() => isAdmin && handleAddCoins(1000)}
+                    title={isAdmin ? (language === 'es' ? "Click para +1000 monedas (Admin)" : "Click for +1000 coins (Admin)") : undefined}
+                  >
+                    <Coins className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm font-bold text-amber-100">{userStats.coins}</span>
+                  </div>
                   <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
                     <Plus className="w-5 h-5 text-[var(--brand)]" />
                   </Button>
@@ -416,6 +596,49 @@ export default function App() {
                   language={language} 
                   onSelectCharacter={handleSelectCharacter}
                   onCreateCharacter={handleNewCharacter}
+                />
+              </motion.div>
+            ) : view === 'shop' ? (
+              <motion.div
+                key="shop"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <ShopView 
+                  language={language} 
+                  userStats={userStats}
+                  onBuy={handleBuyItem}
+                  onAddCoins={async (amount) => {
+                    if (!user) return;
+                    audioManager.play('pop');
+                    const newStats = {
+                      ...userStats,
+                      coins: userStats.coins + amount,
+                    };
+                    setUserStats(newStats);
+                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+                  }}
+                />
+              </motion.div>
+            ) : view === 'personalization' ? (
+              <motion.div
+                key="personalization"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <PersonalizationView 
+                  language={language} 
+                  userStats={userStats}
+                  currentTheme={theme}
+                  currentFont={font}
+                  onApplyTheme={handleApplyTheme}
+                  onDeleteTheme={handleDeleteTheme}
+                  onApplyFont={handleApplyFont}
+                  onUpdateOpacity={handleUpdateOpacity}
                 />
               </motion.div>
             ) : view === 'legal' ? (
