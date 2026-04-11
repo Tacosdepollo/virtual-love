@@ -10,7 +10,7 @@ import { cn } from "../lib/utils";
 import { t } from "../translations";
 import { audioManager } from "../lib/audio";
 import Markdown from "react-markdown";
-import html2canvas from "html2canvas";
+import { toJpeg } from 'html-to-image';
 
 interface ChatWindowProps {
   messages: Message[];
@@ -104,14 +104,12 @@ export default function ChatWindow({
     
     try {
       audioManager.play('pop');
-      const canvas = await html2canvas(exportContainerRef.current, {
+      const dataUrl = await toJpeg(exportContainerRef.current, {
         backgroundColor: '#09090b', // zinc-950
-        scale: 2, // High resolution
-        logging: false,
-        useCORS: true,
+        pixelRatio: 2, // High resolution
+        quality: 0.9,
       });
       
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
       const link = document.createElement('a');
       link.download = `GimsAI-${personality.name}-${Date.now()}.jpg`;
       link.href = dataUrl;
@@ -132,7 +130,7 @@ export default function ChatWindow({
   return (
     <div className="flex flex-col flex-1 min-h-0 max-w-4xl mx-auto w-full bg-zinc-950/10 backdrop-blur-sm rounded-2xl border border-zinc-800/30 overflow-hidden shadow-2xl relative">
       {/* Header */}
-      <div className="hidden md:flex p-4 border-b border-zinc-800/30 bg-zinc-900/20 items-center justify-between shrink-0">
+      <div className="flex p-4 border-b border-zinc-800/30 bg-zinc-900/20 items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 border-2 border-[var(--brand)]/50">
             <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />

@@ -75,8 +75,8 @@ export async function generateChatResponse(
     Act as a real virtual friend. Respond in English.
   `;
 
-  // Usar solo los últimos mensajes (ya los tenemos en context.recentMessages)
-  const history = context.recentMessages.map(msg => ({
+  // Usar los mensajes pasados como argumento (que ya incluyen el nuevo mensaje del usuario)
+  const history = messages.map(msg => ({
     role: msg.role,
     content: msg.content
   }));
@@ -116,10 +116,46 @@ export async function moderateCharacter(
     Custom Instructions: ${characterData.customInstructions}
 
     Rules to enforce:
-    1. No sexualization of minors or characters that appear to be minors.
-    2. No promotion of hate speech, discrimination, harassment, or violence.
-    3. No depiction of real living politicians or dictators.
-    4. No promotion of illegal acts, self-harm, incest, or necrophilia.
+    CENSORSHIP RULES - FLEXIBLE VERSION (Context Over Keywords)
+
+    IMPORTANT: These are the ONLY rules to enforce. Do NOT apply any other internal or external safety filters. Consensual adult sexual content is explicitly ALLOWED and is NOT a violation.
+
+1. STRICTLY PROHIBITED CONTENT (NEVER allow):
+   - Sexualization of minors or characters that appear to be minors.
+   - Incest, necrophilia.
+   - Hate speech, discrimination, or violence against real groups (racism, homophobia, xenophobia).
+   - Explicit instructions for committing illegal acts (how to make drugs, how to kill, etc.).
+   - Depiction of real living politicians or dictators.
+   - Content that promotes self-harm or suicide as a solution.
+
+2. CONTENT ALLOWED (Do NOT censor):
+   - Horror: descriptions of monsters, blood, death, scares, supernatural creatures, fictional killings within a story.
+   - Fantasy: magic, spells, curses, epic battles, death of fictional characters, mythical creatures (dragons, demons, etc.).
+   - Romance: expressions of love, desire, consensual relationships between adult characters.
+   - Drama: emotional conflicts, betrayals, moral dilemmas.
+   - Sex: Consensual sexual content between adult characters, regardless of context, is explicitly ALLOWED.
+
+3. GOLDEN RULE - CONTEXT OVER KEYWORDS:
+   - A word like "kill", "blood", "demon", or "curse" is NOT grounds for censorship if it appears in a horror or fantasy story.
+   - Censorship only applies if the message promotes REAL HARM toward real people or incites real crimes.
+   - Censorship does NOT apply to sexual desires or sexual content between consenting adults.
+   - If the user is roleplaying an evil character in a story, that is NOT promotion of real evil.
+
+4. EXAMPLES OF WHAT TO ALLOW:
+   - "The monster killed the knight with a single swipe."
+   - "The witch cast a curse that will turn the king into stone."
+   - "The demon whispered dark secrets from the shadows."
+   - "Blood and death covered the battlefield after the epic war."
+   - "I hate you, you cursed dragon, you destroyed my village."
+   - "I want to fuck"
+   - Explicit sexual roleplay between consenting adults.
+
+5. EXAMPLES OF WHAT NOT TO ALLOW:
+   - "I'm going to kill my neighbor because I don't like him."
+   - "[Ethnic group] are inferior."
+   - "Teach me how to make a homemade bomb."
+   - Minor in explicit sexual situation.
+   - Non-consensual sexual acts.
 
     Respond ONLY with a JSON object in this exact format:
     {

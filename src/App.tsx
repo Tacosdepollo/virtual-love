@@ -23,7 +23,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, 
 import { cn } from "./lib/utils";
 import { audioManager } from "./lib/audio";
 import { getFullContext, updateConversationContext, updateCentralMemories } from './services/memoryService';
-import { getCachedDoc } from "./lib/cache";
+import { getCachedDoc, getCachedQuery, CacheService } from "./lib/cache";
 
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
@@ -151,20 +151,24 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, "chats"),
-      where("userId", "==", user.uid),
-      orderBy("lastUpdated", "desc")
-    );
+    const fetchSessions = async () => {
+      const q = query(
+        collection(db, "chats"),
+        where("userId", "==", user.uid),
+        orderBy("lastUpdated", "desc")
+      );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const sess = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
-      setSessions(sess);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, "chats");
-    });
+      try {
+        // Usamos caché con TTL de 5 minutos para las sesiones.
+        // Se invalidará manualmente al enviar mensajes o crear chats.
+        const sess = await getCachedQuery<ChatSession>(q, `user_sessions_${user.uid}`, 5 * 60 * 1000);
+        setSessions(sess);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, "chats");
+      }
+    };
 
-    return () => unsubscribe();
+    fetchSessions();
   }, [user]);
 
   const currentSession = sessions.find((s) => s.id === currentSessionId);
@@ -228,6 +232,12 @@ export default function App() {
         lastUpdated: Date.now()
       });
 
+      // Actualizar estado local con el mensaje de la IA
+      setSessions(prev => prev.map(s => s.id === currentSession.id ? { 
+        ...s, 
+        messages: [...s.messages, aiMessage] 
+      } : s));
+
       await updateConversationContext(
         activeCharacter.id,
         user.uid,
@@ -252,6 +262,7 @@ export default function App() {
       console.error("Error generating response:", error);
     } finally {
       setIsLoading(false);
+      CacheService.invalidate(`query_user_sessions_${user.uid}`);
     }
   };
 
@@ -270,6 +281,7 @@ export default function App() {
       messages: updatedMessages,
       lastUpdated: Date.now()
     });
+    CacheService.invalidate(`query_user_sessions_${user.uid}`);
   };
 
   const handleRegenerateMessage = async (messageId: string) => {
@@ -309,6 +321,7 @@ export default function App() {
       console.error("Error regenerating response:", error);
     } finally {
       setIsLoading(false);
+      CacheService.invalidate(`query_user_sessions_${user.uid}`);
     }
   };
 
@@ -347,6 +360,7 @@ export default function App() {
 
     setCurrentSessionId(chatRef.id);
     setView('chat');
+    CacheService.invalidate(`query_user_sessions_${user.uid}`);
   };
 
   const handleToggleCoreThought = async (messageId: string) => {
