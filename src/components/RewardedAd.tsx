@@ -108,14 +108,12 @@ export default function RewardedAd({ language, onComplete, onClose }: RewardedAd
                 exit={{ opacity: 0 }}
                 className="w-full h-full flex flex-col items-center justify-center p-8 space-y-6"
               >
-                {/* Real AdSense Unit Placeholder */}
+                {/* Real AdSense Unit */}
                 <div className="w-full max-w-md bg-zinc-900/50 rounded-xl overflow-hidden min-h-[250px] flex items-center justify-center border border-white/5">
                   <ins className="adsbygoogle"
-                    style={{ display: 'block' }}
+                    style={{ display: 'inline-block', width: '300px', height: '250px' }}
                     data-ad-client="ca-pub-5594071281413115"
-                    data-ad-slot="REPLACE_WITH_YOUR_AD_SLOT_ID"
-                    data-ad-format="auto"
-                    data-full-width-responsive="true"></ins>
+                    data-ad-slot="5804582944"></ins>
                 </div>
 
                 {/* Fallback Mock Content (Visible if real ad fails to load or while testing) */}

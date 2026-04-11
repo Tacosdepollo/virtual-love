@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Message, Character, ChatSession, Language, AppTheme, Personality, Intensity, UserStats, AppFont, ShopItem } from "./types";
-import { generateChatResponse } from "./services/aiService";
+import { Message, Character, ChatSession, Language, AppTheme, Personality, Intensity, UserStats, AppFont, ShopItem, AppNotification } from "./types";
+import { generateChatResponse, moderateCharacter } from "./services/aiService";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import ExploreView from "./components/ExploreView";
@@ -15,13 +15,15 @@ import { SHOP_ITEMS } from "./components/ShopView";
 import { Dialog, DialogContent } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings, ShoppingBag, Palette, Coins } from "lucide-react";
+import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings, ShoppingBag, Palette, Coins, Bell } from "lucide-react";
 import { t } from "./translations";
 import { auth, db, signInWithGoogle, handleFirestoreError, OperationType } from "./lib/firebase";
 import { onAuthStateChanged, User, updateProfile } from "firebase/auth";
-import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, setDoc, deleteDoc, Timestamp } from "firebase/firestore";
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, setDoc, deleteDoc, Timestamp, arrayUnion } from "firebase/firestore";
 import { cn } from "./lib/utils";
 import { audioManager } from "./lib/audio";
+import { getFullContext, updateConversationContext, updateCentralMemories } from './services/memoryService';
+import { getCachedDoc } from "./lib/cache";
 
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
@@ -46,6 +48,8 @@ export default function App() {
     unlockedThemes: [],
     themeOpacity: 0.6
   });
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPersonalitySettingsOpen, setIsPersonalitySettingsOpen] = useState(false);
   const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -90,10 +94,28 @@ export default function App() {
         setSessions([]);
         setCurrentSessionId("");
         setView('explore');
+        setNotifications([]);
       }
     });
     return () => unsubscribe();
   }, []);
+
+  // Notifications Listener
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+      setNotifications(notifs);
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   // Load language and theme
   useEffect(() => {
@@ -151,9 +173,10 @@ export default function App() {
   useEffect(() => {
     if (currentSession) {
       const charDoc = doc(db, "characters", currentSession.characterId);
-      getDoc(charDoc).then(snap => {
-        if (snap.exists()) {
-          setActiveCharacter({ id: snap.id, ...snap.data() } as Character);
+      // Usamos caché con TTL de 1 hora para personajes, ya que rara vez cambian
+      getCachedDoc<Character>(charDoc, 60 * 60 * 1000).then(data => {
+        if (data) {
+          setActiveCharacter(data);
         }
       });
     }
@@ -169,11 +192,14 @@ export default function App() {
       timestamp: Date.now(),
     };
 
-    const updatedMessages = [...currentSession.messages, userMessage];
     const chatDoc = doc(db, "chats", currentSession.id);
     
+    // Optimistic UI update
+    const updatedMessages = [...currentSession.messages, userMessage];
+    setSessions(sessions.map(s => s.id === currentSession.id ? { ...s, messages: updatedMessages } : s));
+
     await updateDoc(chatDoc, {
-      messages: updatedMessages,
+      messages: arrayUnion(userMessage),
       lastUpdated: Date.now()
     });
 
@@ -186,7 +212,8 @@ export default function App() {
         activeCharacter,
         language,
         currentSession.coreThoughts || [],
-        intensity
+        intensity,
+        user.uid
       );
 
       const aiMessage: Message = {
@@ -197,11 +224,89 @@ export default function App() {
       };
 
       await updateDoc(chatDoc, {
-        messages: [...updatedMessages, aiMessage],
+        messages: arrayUnion(aiMessage),
         lastUpdated: Date.now()
       });
+
+      await updateConversationContext(
+        activeCharacter.id,
+        user.uid,
+        content,
+        aiResponseContent,
+        currentSession.summary
+      );
+
+      const messageCount = (currentSession.messages?.length || 0) + 2;
+      if (messageCount % 10 === 0) {
+        const fullDialogue = `${content}\n${aiResponseContent}`;
+        const currentCentral = await getFullContext(activeCharacter.id, user.uid);
+        await updateCentralMemories(
+          activeCharacter.id,
+          user.uid,
+          fullDialogue,
+          currentCentral as any
+        );
+      }
+
     } catch (error) {
       console.error("Error generating response:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    if (!currentSession || !user) return;
+
+    const updatedMessages = currentSession.messages.map(msg => 
+      msg.id === messageId ? { ...msg, content: newContent } : msg
+    );
+
+    // Optimistic UI update
+    setSessions(sessions.map(s => s.id === currentSession.id ? { ...s, messages: updatedMessages } : s));
+
+    const chatDoc = doc(db, "chats", currentSession.id);
+    await updateDoc(chatDoc, {
+      messages: updatedMessages,
+      lastUpdated: Date.now()
+    });
+  };
+
+  const handleRegenerateMessage = async (messageId: string) => {
+    if (!currentSession || !activeCharacter || !user) return;
+
+    const msgIndex = currentSession.messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    const messagesUpTo = currentSession.messages.slice(0, msgIndex);
+
+    setIsLoading(true);
+    audioManager.play('typing', 0.2);
+
+    try {
+      const aiResponseContent = await generateChatResponse(
+        messagesUpTo,
+        activeCharacter,
+        language,
+        currentSession.coreThoughts || [],
+        intensity,
+        user.uid
+      );
+
+      const updatedMessages = currentSession.messages.map(msg => 
+        msg.id === messageId ? { ...msg, content: aiResponseContent, timestamp: Date.now() } : msg
+      );
+
+      setSessions(sessions.map(s => s.id === currentSession.id ? { ...s, messages: updatedMessages } : s));
+
+      const chatDoc = doc(db, "chats", currentSession.id);
+      await updateDoc(chatDoc, {
+        messages: updatedMessages,
+        lastUpdated: Date.now()
+      });
+
+    } catch (error) {
+      console.error("Error regenerating response:", error);
     } finally {
       setIsLoading(false);
     }
@@ -280,6 +385,27 @@ export default function App() {
   const handleSaveCharacter = async (personality: Personality, characterTheme: AppTheme, newLang: Language) => {
     if (!user) return;
     
+    setIsLoading(true);
+    
+    // Automated Moderation
+    const moderationResult = await moderateCharacter(personality, language);
+    if (!moderationResult.isApproved) {
+      setIsLoading(false);
+      const reason = moderationResult.reason || "Violación de Términos y Condiciones";
+      alert(language === 'es' ? `Tu personaje no fue aprobado: ${reason}` : `Your character was not approved: ${reason}`);
+      
+      // Create notification for the user
+      await addDoc(collection(db, "notifications"), {
+        userId: user.uid,
+        title: language === 'es' ? "Personaje Rechazado" : "Character Rejected",
+        message: language === 'es' ? `Tu personaje "${personality.name}" fue rechazado por: ${reason}` : `Your character "${personality.name}" was rejected due to: ${reason}`,
+        type: 'moderation',
+        read: false,
+        createdAt: Date.now()
+      });
+      return;
+    }
+
     const charData: any = {
       name: personality.name,
       description: personality.description,
@@ -308,10 +434,39 @@ export default function App() {
       handleSelectCharacter({ id: charRef.id, ...charData } as Character);
     }
     
+    setIsLoading(false);
     // Redirect to explore or chat is handled by handleSelectCharacter for new bots
     // For existing bots, we might want to stay or go back
     if (activeCharacter) {
       setView('chat');
+    }
+  };
+
+  const handleDeleteCharacterAdmin = async (character: Character, reason: string) => {
+    if (!user) return;
+    
+    try {
+      await deleteDoc(doc(db, "characters", character.id));
+      
+      // Create notification for the creator
+      await addDoc(collection(db, "notifications"), {
+        userId: character.creatorId,
+        title: language === 'es' ? "Personaje Eliminado por Moderación" : "Character Deleted by Moderation",
+        message: language === 'es' 
+          ? `Tu personaje "${character.name}" ha sido eliminado por infringir nuestros Términos y Condiciones. Razón: ${reason}` 
+          : `Your character "${character.name}" has been deleted for violating our Terms and Conditions. Reason: ${reason}`,
+        type: 'moderation',
+        read: false,
+        createdAt: Date.now()
+      });
+
+      if (activeCharacter?.id === character.id) {
+        setActiveCharacter(null);
+        setCurrentSessionId("");
+        setView('explore');
+      }
+    } catch (error) {
+      console.error("Error deleting character as admin:", error);
     }
   };
 
@@ -693,6 +848,14 @@ export default function App() {
                     <span className="text-sm font-bold text-amber-100 relative z-10">{userStats.coins}</span>
                     {!isAdmin && <Plus className="w-3 h-3 text-amber-500 ml-0.5 relative z-10" />}
                   </div>
+                  <div className="relative">
+                    <Button variant="ghost" size="icon" className="rounded-full relative" onClick={() => setIsNotificationsOpen(true)}>
+                      <Bell className="w-5 h-5 text-zinc-400" />
+                      {notifications.filter(n => !n.read).length > 0 && (
+                        <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                      )}
+                    </Button>
+                  </div>
                   <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
                     <Plus className="w-5 h-5 text-[var(--brand)]" />
                   </Button>
@@ -719,6 +882,8 @@ export default function App() {
                   language={language} 
                   onSelectCharacter={handleSelectCharacter}
                   onCreateCharacter={handleNewCharacter}
+                  isAdmin={isAdmin}
+                  onDeleteCharacter={handleDeleteCharacterAdmin}
                 />
               </motion.div>
             ) : view === 'shop' ? (
@@ -815,6 +980,8 @@ export default function App() {
                     isLoading={isLoading}
                     coreThoughts={currentSession.coreThoughts}
                     onToggleCoreThought={handleToggleCoreThought}
+                    onEditMessage={handleEditMessage}
+                    onRegenerateMessage={handleRegenerateMessage}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
@@ -838,6 +1005,45 @@ export default function App() {
               onSave={handleSaveGlobalSettings}
               onResetAccount={handleResetAccount}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Notifications Dialog */}
+        <Dialog open={isNotificationsOpen} onOpenChange={(open) => {
+          setIsNotificationsOpen(open);
+          if (!open) {
+            // Mark all as read when closing
+            notifications.forEach(n => {
+              if (!n.read) {
+                updateDoc(doc(db, "notifications", n.id), { read: true });
+              }
+            });
+          }
+        }}>
+          <DialogContent className="max-w-md bg-zinc-950 border-zinc-800 text-zinc-100 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <h2 className="text-xl font-bold font-heading mb-4 flex items-center gap-2">
+              <Bell className="w-5 h-5 text-[var(--brand)]" />
+              {language === 'es' ? 'Notificaciones' : 'Notifications'}
+            </h2>
+            {notifications.length === 0 ? (
+              <p className="text-zinc-500 text-center py-8">
+                {language === 'es' ? 'No tienes notificaciones.' : 'You have no notifications.'}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {notifications.map(n => (
+                  <div key={n.id} className={cn("p-4 rounded-xl border", n.read ? "bg-zinc-900/50 border-zinc-800/50" : "bg-zinc-900 border-[var(--brand)]/30")}>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-semibold text-zinc-100">{n.title}</h3>
+                      <span className="text-xs text-zinc-500 whitespace-nowrap">
+                        {new Date(n.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-400">{n.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 

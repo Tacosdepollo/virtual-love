@@ -31,6 +31,9 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "font_montecarlo", name: "MonteCarlo", description: "Sophisticated cursive", price: 300, type: "font", value: "montecarlo" },
   { id: "font_saira", name: "Saira Stencil", description: "Industrial stencil look", price: 300, type: "font", value: "saira" },
   { id: "font_silkscreen", name: "Silkscreen", description: "Classic pixel style", price: 400, type: "font", value: "silkscreen" },
+  {  id: "theme_nostalgia",  name: "🌸 Nostalgia",  description: "Recuerdos envueltos en papel antiguo",  price: 450,  type: "theme",  value: "nostalgia",  previewColor: "#f4a4b4" },
+  { id: "theme_inspiracion", name: "✨ Inspiración",  description: "Chispas de creatividad",  price: 600,  type: "theme",   value: "inspiracion",   previewColor: "#f39c12" },
+  { id: "theme_alegria", name: "☀️ Alegría",  description: "Luz y optimismo para cada mensaje",  price: 500,  type: "theme",  value: "alegria",  previewColor: "#f1c40f" },
 ];
 
 export default function ShopView({ language, userStats, userId, onBuy, onAddCoins, onSubscribe, onClaimDaily }: ShopViewProps) {

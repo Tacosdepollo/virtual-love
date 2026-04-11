@@ -107,6 +107,13 @@
 
 
 :root {
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    --font-audiowide: "Audiowide", cursive;
+    --font-jacquard: "Jacquard 24", system-ui;
+    --font-montecarlo: "MonteCarlo", cursive;
+    --font-saira: "Saira Stencil One", system-ui;
+    --font-silkscreen: "Silkscreen", cursive;
     --brand: oklch(0.585 0.233 277.117); /* Default Indigo */
     --brand-foreground: oklch(0.985 0 0);
     --background: oklch(1 0 0);
@@ -224,6 +231,36 @@
               linear-gradient(rgba(0,0,0,0.2) 0%, transparent 100%),
               #4682b4;
   --bg-size: 60px 100%, 100% 100%, 100% 100%;
+}
+[data-theme='nostalgia'] {
+  --brand: oklch(0.7 0.18 10);      /* rosa antiguo, cálido */
+  --bg-image: url('https://www.transparenttextures.com/patterns/old-paper.png');
+  --bg-opacity: 0.3;
+  --bg-size: auto;
+}
+[data-theme='calma'] {
+  --brand: oklch(0.65 0.12 145);    /* verde salvia */
+  --bg-image: url('https://www.transparenttextures.com/patterns/brilliant.png');
+  --bg-opacity: 0.2;
+  --bg-size: cover;
+}
+[data-theme='inspiracion'] {
+  --brand: oklch(0.75 0.22 55);     /* naranja intenso */
+  --bg-image: url('https://www.transparenttextures.com/patterns/light-wool.png');
+  --bg-opacity: 0.4;
+  --bg-size: auto;
+}
+[data-theme='proteccion'] {
+  --brand: oklch(0.6 0.15 265);     /* azul medianoche */
+  --bg-image: url('https://www.transparenttextures.com/patterns/diagmonds-light.png');
+  --bg-opacity: 0.25;
+  --bg-size: auto;
+}
+[data-theme='alegria'] {
+  --brand: oklch(0.8 0.21 95);      /* amarillo miel */
+  --bg-image: url('https://www.transparenttextures.com/patterns/paper-fibers.png');
+  --bg-opacity: 0.15;
+  --bg-size: auto;
 }
 
 .dark {

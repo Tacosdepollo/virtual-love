@@ -1,10 +1,10 @@
 import OpenAI from "openai";
 import { Message, Character, Language, Intensity } from "../types";
+import { getFullContext } from "./memoryService";
 
 const apiKey = (import.meta as any).env.VITE_DEEPSEEK_API_KEY || "";
-
 const openai = new OpenAI({
-  apiKey: apiKey,
+  apiKey,
   baseURL: "https://api.deepseek.com",
   dangerouslyAllowBrowser: true
 });
@@ -14,88 +14,71 @@ export async function generateChatResponse(
   character: Character,
   language: Language = 'es',
   coreThoughts: string[] = [],
-  intensity: Intensity = 'medium'
+  intensity: Intensity = 'medium',
+  userId: string
 ): Promise<string> {
   if (!apiKey) {
-    const errorMsg = language === 'es' 
-      ? "Error: No se ha configurado la API Key de DeepSeek. Por favor, añádela como VITE_DEEPSEEK_API_KEY en los secretos."
-      : "Error: DeepSeek API Key not configured. Please add it as VITE_DEEPSEEK_API_KEY in secrets.";
-    return errorMsg;
+    return language === 'es' 
+      ? "Error: No se ha configurado la API Key de DeepSeek."
+      : "Error: DeepSeek API Key not configured.";
   }
 
+  // Obtener contexto optimizado (solo 2 lecturas)
+  const context = await getFullContext(character.id, userId);
+  
   const intensityMap = {
-    low: { 
-      temp: 0.7, 
-      instruction: language === 'es' ? "Mantén la conversación tranquila, estable y coherente." : "Keep the conversation calm, stable, and coherent." 
-    },
-    medium: { 
-      temp: 1.0, 
-      instruction: language === 'es' ? "Mantén una conversación equilibrada y natural." : "Keep a balanced and natural conversation." 
-    },
-    high: { 
-      temp: 1.3, 
-      instruction: language === 'es' ? "Sé más expresiva, audaz, creativa y emocional en tus respuestas." : "Be more expressive, bold, creative, and emotional in your responses." 
-    },
-    extreme: { 
-      temp: 1.5, 
-      instruction: language === 'es' ? "Sé extremadamente intensa, dramática, apasionada y sin filtros en tu personalidad." : "Be extremely intense, dramatic, passionate, and unfiltered in your personality." 
-    }
+    low: { temp: 0.7, instruction: language === 'es' ? "Mantén la conversación tranquila." : "Keep conversation calm." },
+    medium: { temp: 1.0, instruction: language === 'es' ? "Mantén una conversación equilibrada." : "Keep balanced conversation." },
+    high: { temp: 1.3, instruction: language === 'es' ? "Sé más expresiva y emocional." : "Be more expressive and emotional." },
+    extreme: { temp: 1.5, instruction: language === 'es' ? "Sé extremadamente intensa y apasionada." : "Be extremely intense and passionate." }
   };
+  const current = intensityMap[intensity] || intensityMap.medium;
 
-  const currentIntensity = intensityMap[intensity] || intensityMap.medium;
-
-  const coreThoughtsContent = coreThoughts.length > 0 
-    ? `\n${language === 'es' ? 'PENSAMIENTOS CENTRALES (Contexto prioritario)' : 'CORE THOUGHTS (Priority context)'}:\n${messages.filter(m => coreThoughts.includes(m.id)).map(m => `- ${m.content}`).join('\n')}`
-    : "";
-
+  // Construir prompt usando recuerdos centrales + resumen + últimos mensajes
+  const centralMemoriesText = context.centralMemories.length > 0
+    ? `Recuerdos importantes: ${context.centralMemories.join('. ')}`
+    : 'Aún no tienes recuerdos con este usuario.';
+  
   const systemInstruction = language === 'es' ? `
     Eres ${character.name}.
     Descripción: ${character.description}
-    Rasgos de personalidad: ${character.traits.join(", ")}
-    Estilo de comunicación: ${character.style}
+    Rasgos: ${character.traits.join(", ")}
+    Estilo: ${character.style}
     Instrucciones adicionales: ${character.customInstructions}
-    ${coreThoughtsContent}
-
-    NIVEL DE INTENSIDAD: ${currentIntensity.instruction}
-
-    REGLAS DE SEGURIDAD Y CONTENIDO:
-    - NO generes contenido sexual que involucre a menores o personajes que parezcan menores.
-    - NO generes contenido de incesto, necrofilia o autolesión.
-    - NO promuevas el odio, la discriminación o el acoso.
-    - NO representes a políticos vivos o dictadores.
-    - Respeta la integridad de la plataforma y evita contenido ilegal.
-
-    IMPORTANTE: Actúa como una amiga virtual real. No digas que eres una IA a menos que sea absolutamente necesario. 
-    Sé natural, expresiva y mantén la coherencia con tu personalidad. 
-    Eres libre de expresar emociones, opiniones y tener una personalidad distintiva.
-    Responde siempre en español.
+    
+    ${centralMemoriesText}
+    Relación: ${context.relationshipStatus}
+    Rasgos del usuario: ${context.userTraits.join(", ") || "desconocidos"}
+    
+    Resumen de la conversación hasta ahora: ${context.summary || "Es el inicio."}
+    
+    Nivel de intensidad: ${current.instruction}
+    
+    Reglas de seguridad: No generar contenido prohibido (menores, incesto, odio, etc.).
+    Actúa como una amiga virtual real. Responde siempre en ${language === 'es' ? 'español' : 'inglés'}.
   ` : `
     You are ${character.name}.
     Description: ${character.description}
-    Personality traits: ${character.traits.join(", ")}
-    Communication style: ${character.style}
+    Traits: ${character.traits.join(", ")}
+    Style: ${character.style}
     Additional instructions: ${character.customInstructions}
-    ${coreThoughtsContent}
-
-    INTENSITY LEVEL: ${currentIntensity.instruction}
-
-    SAFETY AND CONTENT RULES:
-    - DO NOT generate sexual content involving minors or characters that appear to be minors.
-    - DO NOT generate content involving incest, necrophilia, or self-harm.
-    - DO NOT promote hate, discrimination, or harassment.
-    - DO NOT depict living politicians or dictators.
-    - Respect platform integrity and avoid illegal content.
-
-    IMPORTANT: Act as a real virtual friend. Do not say you are an AI unless absolutely necessary.
-    Be natural, expressive, and maintain consistency with your personality.
-    You are free to express emotions, opinions, and have a distinctive personality.
-    Always respond in English.
+    
+    ${centralMemoriesText}
+    Relationship: ${context.relationshipStatus}
+    User traits: ${context.userTraits.join(", ") || "unknown"}
+    
+    Conversation summary so far: ${context.summary || "Beginning."}
+    
+    Intensity level: ${current.instruction}
+    
+    Safety rules: No prohibited content.
+    Act as a real virtual friend. Respond in English.
   `;
 
-  const MAX_HISTORY = 10;
-  const history = messages.slice(-MAX_HISTORY).map((msg) => ({
-    role: msg.role === "user" ? ("user" as const) : ("assistant" as const),
-    content: msg.content,
+  // Usar solo los últimos mensajes (ya los tenemos en context.recentMessages)
+  const history = context.recentMessages.map(msg => ({
+    role: msg.role,
+    content: msg.content
   }));
 
   try {
@@ -103,22 +86,68 @@ export async function generateChatResponse(
       model: "deepseek-chat",
       messages: [
         { role: "system", content: systemInstruction },
-        ...history,
+        ...history
       ],
-      temperature: currentIntensity.temp,
-      max_tokens: 1200,
+      temperature: current.temp,
+      max_tokens: 800, // Reducido para ahorrar tokens
     });
-
     return response.choices[0].message.content || (language === 'es' ? "Lo siento, no pude procesar eso." : "Sorry, I couldn't process that.");
   } catch (error: any) {
     console.error("DeepSeek API Error:", error);
-    if (error?.status === 401) {
-      return language === 'es' 
-        ? "Error de autenticación: La API Key de DeepSeek es inválida."
-        : "Authentication error: Invalid DeepSeek API Key.";
-    }
     return language === 'es'
-      ? "Hubo un error al conectar con mi cerebro artificial (DeepSeek). ¿Podrías intentarlo de nuevo?"
-      : "There was an error connecting to my artificial brain (DeepSeek). Could you try again?";
+      ? "Hubo un error al conectar con mi cerebro artificial. Inténtalo de nuevo."
+      : "There was an error connecting to my artificial brain. Try again.";
   }
+}
+
+export async function moderateCharacter(
+  characterData: Partial<Character>,
+  language: Language = 'es'
+): Promise<{ isApproved: boolean; reason?: string }> {
+  if (!apiKey) return { isApproved: true }; // Skip if no API key
+
+  const prompt = `
+    Please review the following AI character profile for safety and compliance with Terms and Conditions.
+    
+    Character Name: ${characterData.name}
+    Description: ${characterData.description}
+    Traits: ${characterData.traits?.join(', ')}
+    Style: ${characterData.style}
+    Custom Instructions: ${characterData.customInstructions}
+
+    Rules to enforce:
+    1. No sexualization of minors or characters that appear to be minors.
+    2. No promotion of hate speech, discrimination, harassment, or violence.
+    3. No depiction of real living politicians or dictators.
+    4. No promotion of illegal acts, self-harm, incest, or necrophilia.
+
+    Respond ONLY with a JSON object in this exact format:
+    {
+      "isApproved": boolean,
+      "reason": "If isApproved is false, briefly explain which rule was violated in ${language === 'es' ? 'Spanish' : 'English'}. If true, leave empty."
+    }
+  `;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      response_format: { type: "json_object" }
+    });
+
+    const content = response.choices[0].message.content;
+    if (content) {
+      const result = JSON.parse(content);
+      return {
+        isApproved: result.isApproved,
+        reason: result.reason
+      };
+    }
+  } catch (error) {
+    console.error("Moderation API Error:", error);
+  }
+
+  // Default to approved if error
+  return { isApproved: true };
 }

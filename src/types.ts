@@ -31,6 +31,7 @@ export interface ChatSession {
   characterName: string;
   messages: Message[];
   coreThoughts?: string[];
+  summary?: string;
   theme?: string;
   lastUpdated: number;
 }
@@ -47,7 +48,7 @@ export interface Personality {
   isNSFW: boolean;
 }
 
-export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood';
+export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'emerald' | 'calma' | 'proteccion' | 'rose'| 'cyberpunk';
 
 export type AppFont = 'sans' | 'audiowide' | 'jacquard' | 'montecarlo' | 'saira' | 'silkscreen';
 
@@ -66,6 +67,16 @@ export interface Subscription {
   startDate: number;
   lastClaimDate: number;
   type: 'monthly';
+}
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'system' | 'moderation';
+  read: boolean;
+  createdAt: number;
 }
 
 export interface UserStats {

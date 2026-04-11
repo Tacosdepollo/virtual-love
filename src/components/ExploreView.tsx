@@ -1,49 +1,68 @@
 import React, { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { collection, query, where, orderBy, onSnapshot, limit } from "firebase/firestore";
+import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { getCachedQuery } from "../lib/cache";
 import { Character, Language } from "../types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { MessageSquare, User, Sparkles, Plus, Search, Filter } from "lucide-react";
+import { MessageSquare, User, Sparkles, Plus, Search, Filter, ShieldAlert } from "lucide-react";
 import { motion } from "motion/react";
 import { t } from "../translations";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { cn } from "../lib/utils";
 import { audioManager } from "../lib/audio";
+import AdSenseFluid from "./AdSenseFluid";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 interface ExploreViewProps {
   language: Language;
   onSelectCharacter: (character: Character) => void;
   onCreateCharacter: () => void;
+  isAdmin?: boolean;
+  onDeleteCharacter?: (character: Character, reason: string) => void;
 }
 
-export default function ExploreView({ language, onSelectCharacter, onCreateCharacter }: ExploreViewProps) {
+const MODERATION_REASONS = [
+  "Contenido sexual involucrando menores o apariencia de menores",
+  "Promoción de odio, discriminación o acoso",
+  "Representación de políticos vivos o dictadores",
+  "Promoción de actos ilegales, autolesión, incesto o necrofilia",
+  "Spam o contenido irrelevante"
+];
+
+export default function ExploreView({ language, onSelectCharacter, onCreateCharacter, isAdmin, onDeleteCharacter }: ExploreViewProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNSFW, setShowNSFW] = useState(false);
+  
+  // Moderation state
+  const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
+  const [deleteReason, setDeleteReason] = useState(MODERATION_REASONS[0]);
 
   useEffect(() => {
-    // We fetch all public characters to allow client-side searching and filtering
-    // In a real app with thousands of characters, we would use server-side search
-    const q = query(
-      collection(db, "characters"),
-      where("isPublic", "==", true),
-      orderBy("chatCount", "desc"),
-      limit(100)
-    );
+    const fetchCharacters = async () => {
+      const q = query(
+        collection(db, "characters"),
+        where("isPublic", "==", true),
+        orderBy("chatCount", "desc"),
+        limit(100)
+      );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Character));
-      setCharacters(chars);
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, "characters");
-    });
+      try {
+        // Usamos caché con TTL de 30 minutos para ahorrar lecturas masivas
+        const chars = await getCachedQuery<Character>(q, "explore_public_chars", 30 * 60 * 1000);
+        setCharacters(chars);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, "characters");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => unsubscribe();
+    fetchCharacters();
   }, []);
 
   const filteredCharacters = characters.filter(char => {
@@ -54,6 +73,13 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
     const matchesNSFW = showNSFW ? true : !char.isNSFW;
     return matchesSearch && matchesNSFW;
   });
+
+  const handleDeleteConfirm = () => {
+    if (characterToDelete && onDeleteCharacter) {
+      onDeleteCharacter(characterToDelete, deleteReason);
+      setCharacterToDelete(null);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
@@ -72,6 +98,8 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
             {language === 'es' ? 'Crear Personaje' : 'Create Character'}
           </Button>
         </div>
+
+        <AdSenseFluid />
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
@@ -113,74 +141,127 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCharacters.map((char, idx) => (
-              <motion.div
-                key={char.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer group h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => onSelectCharacter(char)}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <Avatar className="w-16 h-16 border-2 border-[var(--brand)]/20 group-hover:border-[var(--brand)]/50 transition-colors">
-                        <AvatarImage src={char.avatarUrl} referrerPolicy="no-referrer" />
-                        <AvatarFallback className="bg-zinc-800 text-2xl font-bold text-[var(--brand)]">
-                          {char.name[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-full">
-                          <MessageSquare className="w-3 h-3" />
-                          {char.chatCount || 0}
+              <React.Fragment key={char.id}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="relative group"
+                >
+                  {isAdmin && (
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCharacterToDelete(char);
+                      }}
+                      title="Moderar / Eliminar"
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => onSelectCharacter(char)}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <Avatar className="w-16 h-16 border-2 border-[var(--brand)]/20 group-hover:border-[var(--brand)]/50 transition-colors">
+                          <AvatarImage src={char.avatarUrl} referrerPolicy="no-referrer" />
+                          <AvatarFallback className="bg-zinc-800 text-2xl font-bold text-[var(--brand)]">
+                            {char.name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-full">
+                            <MessageSquare className="w-3 h-3" />
+                            {char.chatCount || 0}
+                          </div>
+                          {char.isNSFW && (
+                            <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-5 bg-red-500/20 text-red-400 border-red-500/30">
+                              NSFW
+                            </Badge>
+                          )}
                         </div>
-                        {char.isNSFW && (
-                          <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-5 bg-red-500/20 text-red-400 border-red-500/30">
-                            NSFW
-                          </Badge>
-                        )}
                       </div>
-                    </div>
-                    <CardTitle className="text-xl font-bold font-heading mt-4 text-zinc-100 group-hover:text-[var(--brand)] transition-colors">
-                      {char.name}
-                    </CardTitle>
-                    <CardDescription className="line-clamp-2 text-zinc-400 text-sm">
-                      {char.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {char.traits.slice(0, 3).map(trait => (
-                        <span key={trait} className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-md">
-                          {trait}
-                        </span>
-                      ))}
-                    </div>
-                    {char.tags && char.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {char.tags.slice(0, 4).map(tag => (
-                          <Badge key={tag} variant="outline" className="text-[9px] py-0 px-1.5 h-4 border-purple-500/30 text-purple-400 bg-purple-500/5">
-                            {tag}
-                          </Badge>
+                      <CardTitle className="text-xl font-bold font-heading mt-4 text-zinc-100 group-hover:text-[var(--brand)] transition-colors">
+                        {char.name}
+                      </CardTitle>
+                      <CardDescription className="line-clamp-2 text-zinc-400 text-sm">
+                        {char.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1">
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {char.traits.slice(0, 3).map(trait => (
+                          <span key={trait} className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-md">
+                            {trait}
+                          </span>
                         ))}
                       </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="pt-0 pb-4 flex items-center justify-between border-t border-zinc-800/50 mt-4">
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                      <User className="w-3 h-3" />
-                      {char.creatorName}
-                    </div>
-                    <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1">
-                      {language === 'es' ? 'Chatear' : 'Chat'}
-                      <Sparkles className="w-3 h-3" />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
+                      {char.tags && char.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {char.tags.slice(0, 4).map(tag => (
+                            <Badge key={tag} variant="outline" className="text-[9px] py-0 px-1.5 h-4 border-purple-500/30 text-purple-400 bg-purple-500/5">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                    <CardFooter className="pt-0 pb-4 flex items-center justify-between border-t border-zinc-800/50 mt-4">
+                      <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <User className="w-3 h-3" />
+                        {char.creatorName}
+                      </div>
+                      <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1">
+                        {language === 'es' ? 'Chatear' : 'Chat'}
+                        <Sparkles className="w-3 h-3" />
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+                
+                {/* Insert Ad after every 6 characters */}
+                {(idx + 1) % 6 === 0 && (
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 my-4">
+                    <AdSenseFluid />
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
         )}
       </div>
+
+      {/* Moderation Dialog */}
+      <Dialog open={!!characterToDelete} onOpenChange={(open) => !open && setCharacterToDelete(null)}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="text-red-500 flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5" />
+              Moderar Personaje
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-zinc-400">
+              Estás a punto de eliminar el personaje <strong>{characterToDelete?.name}</strong>. Selecciona la razón (basada en los Términos y Condiciones) para notificar al creador:
+            </p>
+            <select 
+              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-sm text-zinc-100 focus:ring-1 focus:ring-red-500 outline-none"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+            >
+              {MODERATION_REASONS.map(reason => (
+                <option key={reason} value={reason}>{reason}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="ghost" onClick={() => setCharacterToDelete(null)}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleDeleteConfirm}>Eliminar y Notificar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
