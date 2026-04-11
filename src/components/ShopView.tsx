@@ -188,6 +188,22 @@ export default function ShopView({ language, userStats, userId, onBuy, onAddCoin
                           type: 'success',
                           text: language === 'es' ? "¡Pago completado con éxito! Tu suscripción se activará en unos momentos." : "Payment successful! Your subscription will be active in a few moments."
                         });
+                        
+                        // Update user stats in Firestore
+                        if (userId) {
+                          const { doc, updateDoc } = await import("firebase/firestore");
+                          const { db } = await import("../lib/firebase");
+                          const newStats = {
+                            ...userStats,
+                            subscription: {
+                              active: true,
+                              startDate: Date.now(),
+                              lastClaimDate: 0,
+                              type: 'monthly'
+                            }
+                          };
+                          await updateDoc(doc(db, "users", userId), { stats: newStats });
+                        }
                       }
                     }}
                     onError={(err) => {

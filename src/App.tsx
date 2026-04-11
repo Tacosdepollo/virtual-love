@@ -896,6 +896,7 @@ export default function App() {
                   onCreateCharacter={handleNewCharacter}
                   isAdmin={isAdmin}
                   onDeleteCharacter={handleDeleteCharacterAdmin}
+                  userStats={userStats}
                 />
               </motion.div>
             ) : view === 'shop' ? (

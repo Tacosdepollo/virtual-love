@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { getCachedQuery } from "../lib/cache";
-import { Character, Language } from "../types";
+import { Character, Language, UserStats } from "../types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -22,6 +22,7 @@ interface ExploreViewProps {
   onCreateCharacter: () => void;
   isAdmin?: boolean;
   onDeleteCharacter?: (character: Character, reason: string) => void;
+  userStats?: UserStats;
 }
 
 const MODERATION_REASONS = [
@@ -32,7 +33,7 @@ const MODERATION_REASONS = [
   "Spam o contenido irrelevante"
 ];
 
-export default function ExploreView({ language, onSelectCharacter, onCreateCharacter, isAdmin, onDeleteCharacter }: ExploreViewProps) {
+export default function ExploreView({ language, onSelectCharacter, onCreateCharacter, isAdmin, onDeleteCharacter, userStats }: ExploreViewProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -222,7 +223,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                 </motion.div>
                 
                 {/* Insert Ad after every 6 characters */}
-                {(idx + 1) % 6 === 0 && (
+                {(!userStats?.subscription?.active) && (idx + 1) % 6 === 0 && (
                   <div className="col-span-1 sm:col-span-2 lg:col-span-3 my-4">
                     <AdSenseFluid />
                   </div>

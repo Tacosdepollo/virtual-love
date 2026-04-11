@@ -2,26 +2,12 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import admin from "firebase-admin";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: "gen-lang-client-0788845722",
-  });
-}
-
-// For named databases in Admin SDK
-const namedDb = admin.firestore();
-// Use the correct database ID from firebase-applet-config.json
-// @ts-ignore - firestore(databaseId) is supported in newer versions of firebase-admin but might not be in the types
-const firestoreDb = admin.app().firestore("ai-studio-230da23f-4d80-4e41-9a25-4e023bda6264");
 
 // PayPal Helper Functions
 const PAYPAL_API = process.env.NODE_ENV === 'production' 
@@ -92,28 +78,6 @@ async function startServer() {
       });
       const data = await response.json() as any;
 
-      if (data.status === 'COMPLETED') {
-        console.log(`PayPal Payment successful for user: ${userId}`);
-        const userRef = firestoreDb.collection("users").doc(userId);
-        
-        await firestoreDb.runTransaction(async (transaction) => {
-          const userDoc = await transaction.get(userRef);
-          if (userDoc.exists) {
-            const stats = (userDoc.data() as any)?.stats || {};
-            transaction.update(userRef, {
-              stats: {
-                ...stats,
-                subscription: {
-                  active: true,
-                  startDate: Date.now(),
-                  lastClaimDate: 0,
-                  type: 'monthly'
-                }
-              }
-            });
-          }
-        });
-      }
       res.json(data);
     } catch (error: any) {
       console.error("PayPal Capture Order Error:", error);
