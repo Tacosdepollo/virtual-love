@@ -871,11 +871,6 @@ export default function App() {
                   <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
                     <Plus className="w-5 h-5 text-[var(--brand)]" />
                   </Button>
-                  {view === 'chat' && currentSession && activeCharacter && (activeCharacter.creatorId === user.uid || isAdmin) && (
-                    <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setView('create')}>
-                      <Settings className="w-5 h-5 text-zinc-400" />
-                    </Button>
-                  )}
                 </div>
               )}
             </div>
@@ -995,6 +990,7 @@ export default function App() {
                     onToggleCoreThought={handleToggleCoreThought}
                     onEditMessage={handleEditMessage}
                     onRegenerateMessage={handleRegenerateMessage}
+                    onConfigureCharacter={(activeCharacter.creatorId === user?.uid || isAdmin) ? () => setView('create') : undefined}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">

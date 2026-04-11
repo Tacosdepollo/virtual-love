@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Send, User, Bot, Loader2, Pin, PinOff, BrainCircuit, X, Edit2, RefreshCw, CheckSquare, Square, Download, Check } from "lucide-react";
+import { Send, User, Bot, Loader2, Pin, PinOff, BrainCircuit, X, Edit2, RefreshCw, CheckSquare, Square, Download, Check, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
@@ -22,6 +22,7 @@ interface ChatWindowProps {
   onToggleCoreThought?: (messageId: string) => void;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerateMessage?: (messageId: string) => void;
+  onConfigureCharacter?: () => void;
 }
 
 export default function ChatWindow({ 
@@ -33,7 +34,8 @@ export default function ChatWindow({
   coreThoughts = [],
   onToggleCoreThought,
   onEditMessage,
-  onRegenerateMessage
+  onRegenerateMessage,
+  onConfigureCharacter
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -169,6 +171,18 @@ export default function ChatWindow({
             {isSelectMode ? <X className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
             <span className="hidden sm:inline">{language === 'es' ? 'Seleccionar' : 'Select'}</span>
           </Button>
+
+          {onConfigureCharacter && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onConfigureCharacter}
+              className="rounded-full"
+              title={language === 'es' ? 'Configurar Personaje' : 'Configure Character'}
+            >
+              <Settings className="w-4 h-4 text-zinc-400" />
+            </Button>
+          )}
         </div>
       </div>
 

@@ -83,7 +83,7 @@ export default function Sidebar({
                   audioManager.play('click');
                   onDeleteSession(session.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-opacity"
+                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 hover:text-red-400 transition-opacity"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
