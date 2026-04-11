@@ -65,7 +65,12 @@ export default function App() {
         // Sync user to Firestore
         const userDoc = doc(db, "users", u.uid);
         getDoc(userDoc).then(snap => {
-          if (!snap.exists() || !snap.data().stats) {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.stats) {
+              setUserStats(data.stats);
+            }
+          } else {
             setDoc(userDoc, {
               uid: u.uid,
               displayName: u.displayName,
@@ -80,13 +85,6 @@ export default function App() {
                 themeOpacity: 0.6,
                 subscription: undefined
               }
-            }, { merge: true });
-          } else {
-            setDoc(userDoc, {
-              uid: u.uid,
-              displayName: u.displayName,
-              email: u.email,
-              photoURL: u.photoURL,
             }, { merge: true });
           }
         });

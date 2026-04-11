@@ -300,7 +300,7 @@ export default function ChatWindow({
                     {/* Action Buttons */}
                     {!isSelectMode && editingMessageId !== msg.id && (
                       <div className={cn(
-                        "absolute top-0 opacity-0 group-hover:opacity-100 transition-all flex flex-col gap-1 z-10",
+                        "absolute top-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-all flex flex-col gap-1 z-10",
                         msg.role === "user" ? "-left-10" : "-right-10"
                       )}>
                         {/* Pin */}
