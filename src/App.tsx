@@ -83,9 +83,12 @@ export default function App() {
                 currentFont: 'sans',
                 unlockedThemes: [],
                 themeOpacity: 0.6,
-                subscription: undefined
+                subscription: null
               }
-            }, { merge: true });
+            }, { merge: true }).catch(error => {
+              console.error("Error creating user document:", error);
+              handleFirestoreError(error, OperationType.CREATE, "users");
+            });
           }
         });
       } else {
@@ -340,7 +343,7 @@ export default function App() {
 
     // Create new session
     audioManager.play('pop');
-    const chatRef = await addDoc(collection(db, "chats"), {
+    const newSessionData = {
       userId: user.uid,
       characterId: character.id,
       characterName: character.name,
@@ -348,13 +351,20 @@ export default function App() {
       coreThoughts: [],
       theme: theme,
       lastUpdated: Date.now()
-    });
+    };
+    const chatRef = await addDoc(collection(db, "chats"), newSessionData);
 
     // Increment chat count ONLY for new sessions (Optimization)
     const charRef = doc(db, "characters", character.id);
     updateDoc(charRef, {
       chatCount: (character.chatCount || 0) + 1
     });
+
+    const newSession: ChatSession = {
+      id: chatRef.id,
+      ...newSessionData
+    };
+    setSessions(prev => [newSession, ...prev]);
 
     setCurrentSessionId(chatRef.id);
     setView('chat');
@@ -397,6 +407,11 @@ export default function App() {
   const handleSaveCharacter = async (personality: Personality, characterTheme: AppTheme, newLang: Language) => {
     if (!user) return;
     
+    if (!personality.name || personality.name.trim() === "") {
+      alert(language === 'es' ? "El personaje debe tener un nombre." : "The character must have a name.");
+      return;
+    }
+
     setIsLoading(true);
     
     // Automated Moderation
@@ -442,8 +457,16 @@ export default function App() {
       charData.chatCount = 0;
       charData.createdAt = Timestamp.now();
       
-      const charRef = await addDoc(collection(db, "characters"), charData);
+      const charRef = await addDoc(collection(db, "characters"), charData).catch(error => {
+        console.error("Error creating character:", error);
+        handleFirestoreError(error, OperationType.CREATE, "characters");
+        throw error;
+      });
       handleSelectCharacter({ id: charRef.id, ...charData } as Character);
+    }
+    
+    if (charData.isPublic) {
+      CacheService.invalidate("query_explore_public_chars");
     }
     
     setIsLoading(false);
@@ -549,7 +572,7 @@ export default function App() {
           currentFont: 'sans',
           unlockedThemes: [],
           themeOpacity: 0.6,
-          subscription: undefined
+          subscription: null
         };
         
         await updateDoc(doc(db, "users", user.uid), { stats: initialStats });

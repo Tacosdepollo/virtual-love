@@ -2,6 +2,8 @@
 import { db, auth } from '../lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, runTransaction, Timestamp } from 'firebase/firestore';
 import { getCachedDoc, CacheService } from '../lib/cache';
+import OpenAI from "openai";
+import { Message } from '../types';
 
 export interface CentralMemory {
   userId: string;
@@ -123,20 +125,29 @@ export async function updateCentralMemories(
   CacheService.invalidate(`doc_centralMemories/${userId}_${characterId}`);
 }
 
+const apiKey = (import.meta as any).env.VITE_DEEPSEEK_API_KEY || "";
+const openai = new OpenAI({
+  apiKey,
+  baseURL: "https://api.deepseek.com",
+  dangerouslyAllowBrowser: true
+});
+
 // Funciones auxiliares (simplificadas, llama a DeepSeek)
 async function generateSummaryFromMessages(messages: Message[], oldSummary?: string): Promise<string> {
+  if (!apiKey) return oldSummary || '';
+  
   const prompt = `
     Resumen anterior: ${oldSummary || 'Ninguno'}
     Mensajes recientes: ${JSON.stringify(messages)}
     Genera un resumen de la conversación (máx 200 palabras).
   `;
   try {
-    const response = await fetch('/api/summarize', {
-      method: 'POST',
-      body: JSON.stringify({ prompt })
+    const response = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
     });
-    const data = await response.json();
-    return data.summary || '';
+    return response.choices[0].message.content || oldSummary || '';
   } catch (e) {
     console.error(e);
     return oldSummary || '';
@@ -144,18 +155,24 @@ async function generateSummaryFromMessages(messages: Message[], oldSummary?: str
 }
 
 async function extractNewMemories(newText: string, current: CentralMemory | null) {
+  if (!apiKey) return { newMemories: [], newTraits: [], newRelationshipStatus: null };
+
   const prompt = `
     Basado en: "${newText}"
     Recuerdos actuales: ${JSON.stringify(current?.coreMemories || [])}
     Extrae información NUEVA importante (nombre, gustos, eventos).
-    Devuelve JSON: { "newMemories": [], "newTraits": [], "newRelationshipStatus": null }
+    Devuelve JSON estrictamente con este formato: { "newMemories": ["str"], "newTraits": ["str"], "newRelationshipStatus": "str" }
   `;
   try {
-    const response = await fetch('/api/extract-memories', {
-      method: 'POST',
-      body: JSON.stringify({ prompt })
+    const response = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      response_format: { type: "json_object" }
     });
-    return await response.json();
+    
+    const content = response.choices[0].message.content || "{}";
+    return JSON.parse(content);
   } catch (e) {
     console.error(e);
     return { newMemories: [], newTraits: [], newRelationshipStatus: null };

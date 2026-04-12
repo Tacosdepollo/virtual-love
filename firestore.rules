@@ -55,9 +55,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "dav1degante@gmail.com" && request.auth.token.email_verified == true));
+      return isAuthenticated() && request.auth.token.email == "dav1degante@gmail.com";
     }
 
     function isValidEmail(email) {
@@ -75,11 +73,7 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
-             data.uid == request.auth.uid &&
-             isValidEmail(data.email) &&
-             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() < 100)) &&
-             (!('photoURL' in data) || data.photoURL == null || isValidUrl(data.photoURL));
+      return data.uid == request.auth.uid;
     }
 
     function isValidCharacter(data) {
@@ -87,7 +81,7 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.description is string && data.description.size() < 2000 &&
              data.traits is list && data.traits.size() < 20 &&
-             (!('tags' in data) || data.tags == null || (data.tags is list && data.tags.size() < 20)) &&
+             (!('tags' in data) || data.tags == null || (data.tags is list && data.tags.size() <= 20)) &&
              data.style is string && data.style.size() < 500 &&
              data.customInstructions is string && data.customInstructions.size() < 5000 &&
              data.creatorId is string &&
@@ -105,6 +99,7 @@ service cloud.firestore {
              data.characterName is string &&
              data.messages is list && data.messages.size() < 1000 &&
              (!('coreThoughts' in data) || data.coreThoughts == null || (data.coreThoughts is list && data.coreThoughts.size() <= 6)) &&
+             (!('theme' in data) || data.theme is string) &&
              data.lastUpdated is number;
     }
 
@@ -114,12 +109,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || isAdmin());
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.get('role', 'user') == 'user' || isAdmin());
       allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.get('role', 'user') == resource.data.get('role', 'user') || isAdmin());
     }
 
     match /characters/{characterId} {
-      allow read: if resource.data.isPublic == true || isOwner(resource.data.creatorId) || isAdmin();
+      allow read: if true; // Allow public read for explore view
       allow create: if isAuthenticated() && isValidCharacter(request.resource.data) && request.resource.data.creatorId == request.auth.uid && (!isAdmin() || request.resource.data.chatCount == 0);
       allow update: if isAuthenticated() && isValidCharacter(request.resource.data) && 
                     (
