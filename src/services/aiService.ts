@@ -123,8 +123,9 @@ export async function moderateCharacter(
 1. STRICTLY PROHIBITED CONTENT (NEVER allow):
   
    - Hate speech, discrimination, or violence against real groups (racism, homophobia, xenophobia).
-   -
+   - MINORS CAN ONLY BE USED IN SFW SETTINGS; ANY HINT TO a NSFW CONTEXT FOR A MINOR OF 18 years IS PROHIBITED
    - Content that promotes self-harm or suicide as a solution.
+   
 
 2. CONTENT ALLOWED (Do NOT censor):
    - Horror: descriptions of monsters, blood, death, scares, supernatural creatures, fictional killings within a story.
