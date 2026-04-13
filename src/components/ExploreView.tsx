@@ -15,6 +15,7 @@ import { cn } from "../lib/utils";
 import { audioManager } from "../lib/audio";
 import AdSenseFluid from "./AdSenseFluid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import PublicProfileDialog from "./PublicProfileDialog";
 
 interface ExploreViewProps {
   language: Language;
@@ -42,6 +43,9 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
   // Moderation state
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
   const [deleteReason, setDeleteReason] = useState(MODERATION_REASONS[0]);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCharacters = async () => {
@@ -66,14 +70,15 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
     fetchCharacters();
   }, []);
 
-  const filteredCharacters = characters.filter(char => {
-    const matchesSearch = char.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         char.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         char.traits.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                         (char.tags || []).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesNSFW = showNSFW ? true : !char.isNSFW;
-    return matchesSearch && matchesNSFW;
-  });
+  // Group characters by tag
+  const groupedCharacters = characters.reduce((acc, char) => {
+    const category = (char.tags && char.tags.length > 0) ? char.tags[0] : (language === 'es' ? 'Otros' : 'Other');
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(char);
+    return acc;
+  }, {} as Record<string, Character[]>);
+
+  const categories = Object.keys(groupedCharacters).sort();
 
   const handleDeleteConfirm = () => {
     if (characterToDelete && onDeleteCharacter) {
@@ -133,6 +138,33 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           </Button>
         </div>
 
+        {/* Category Buttons */}
+        <div className="flex overflow-x-auto pb-2 gap-2 custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+          <Button
+            variant="ghost"
+            onClick={() => setSelectedCategory('All')}
+            className={cn(
+              "rounded-full whitespace-nowrap px-6",
+              selectedCategory === 'All' ? "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" : "bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+            )}
+          >
+            {language === 'es' ? 'Todos' : 'All'}
+          </Button>
+          {categories.map(category => (
+            <Button
+              key={category}
+              variant="ghost"
+              onClick={() => setSelectedCategory(category)}
+              className={cn(
+                "rounded-full whitespace-nowrap px-6 capitalize",
+                selectedCategory === category ? "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" : "bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+              )}
+            >
+              {category}
+            </Button>
+          ))}
+        </div>
+        
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map(i => (
@@ -140,98 +172,150 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCharacters.map((char, idx) => (
-              <React.Fragment key={char.id}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="relative group"
-                >
-                  {isAdmin && (
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCharacterToDelete(char);
-                      }}
-                      title="Moderar / Eliminar"
-                    >
-                      <ShieldAlert className="w-4 h-4" />
-                    </Button>
+          <div className="space-y-12">
+            {categories.filter(c => selectedCategory === 'All' || c === selectedCategory).map(category => {
+              const categoryChars = groupedCharacters[category].filter(char => {
+                const matchesSearch = char.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                     char.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                     char.traits.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                     (char.tags || []).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+                const matchesNSFW = showNSFW ? true : !char.isNSFW;
+                return matchesSearch && matchesNSFW;
+              });
+
+              if (categoryChars.length === 0) return null;
+
+              return (
+                <div key={category} className="space-y-4">
+                  {selectedCategory === 'All' && (
+                    <h2 className="text-2xl font-bold font-heading text-zinc-100 capitalize">{category}</h2>
                   )}
-                  <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => onSelectCharacter(char)}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <Avatar className="w-16 h-16 border-2 border-[var(--brand)]/20 group-hover:border-[var(--brand)]/50 transition-colors">
-                          <AvatarImage src={char.avatarUrl} referrerPolicy="no-referrer" />
-                          <AvatarFallback className="bg-zinc-800 text-2xl font-bold text-[var(--brand)]">
-                            {char.name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col items-end gap-2">
-                          <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-full">
-                            <MessageSquare className="w-3 h-3" />
-                            {char.chatCount || 0}
-                          </div>
-                          {char.isNSFW && (
-                            <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-5 bg-red-500/20 text-red-400 border-red-500/30">
-                              NSFW
-                            </Badge>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {categoryChars.map((char, idx) => (
+                      <React.Fragment key={char.id}>
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="relative group"
+                        >
+                          {isAdmin && (
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCharacterToDelete(char);
+                              }}
+                              title="Moderar / Eliminar"
+                            >
+                              <ShieldAlert className="w-4 h-4" />
+                            </Button>
                           )}
-                        </div>
-                      </div>
-                      <CardTitle className="text-xl font-bold font-heading mt-4 text-zinc-100 group-hover:text-[var(--brand)] transition-colors">
-                        {char.name}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-2 text-zinc-400 text-sm">
-                        {char.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {char.traits.slice(0, 3).map(trait => (
-                          <span key={trait} className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-md">
-                            {trait}
-                          </span>
-                        ))}
-                      </div>
-                      {char.tags && char.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {char.tags.slice(0, 4).map(tag => (
-                            <Badge key={tag} variant="outline" className="text-[9px] py-0 px-1.5 h-4 border-purple-500/30 text-purple-400 bg-purple-500/5">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                    <CardFooter className="pt-0 pb-4 flex items-center justify-between border-t border-zinc-800/50 mt-4">
-                      <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <User className="w-3 h-3" />
-                        {char.creatorName}
-                      </div>
-                      <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1">
-                        {language === 'es' ? 'Chatear' : 'Chat'}
-                        <Sparkles className="w-3 h-3" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </motion.div>
-                
-                {/* Insert Ad after every 6 characters */}
-                {(!userStats?.subscription?.active) && (idx + 1) % 6 === 0 && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 my-4">
-                    <AdSenseFluid />
+                          <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => setSelectedCharacter(char)}>
+                            <CardHeader className="pb-2">
+                              <div className="flex items-start justify-between">
+                                <Avatar className="w-16 h-16 border-2 border-[var(--brand)]/20 group-hover:border-[var(--brand)]/50 transition-colors">
+                                  <AvatarImage src={char.avatarUrl} referrerPolicy="no-referrer" />
+                                  <AvatarFallback className="bg-zinc-800 text-2xl font-bold text-[var(--brand)]">
+                                    {char.name[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col items-end gap-2">
+                                  <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-full">
+                                    <MessageSquare className="w-3 h-3" />
+                                    {char.chatCount || 0}
+                                  </div>
+                                  {char.isNSFW && (
+                                    <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-5 bg-red-500/20 text-red-400 border-red-500/30">
+                                      NSFW
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <CardTitle className="text-xl font-bold font-heading mt-4 text-zinc-100 group-hover:text-[var(--brand)] transition-colors">
+                                {char.name}
+                              </CardTitle>
+                              <CardDescription className="line-clamp-2 text-zinc-400 text-sm">
+                                {char.description}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex-1">
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {char.traits.slice(0, 3).map(trait => (
+                                  <span key={trait} className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-md">
+                                    {trait}
+                                  </span>
+                                ))}
+                              </div>
+                            </CardContent>
+                            <CardFooter className="pt-0 pb-4 flex items-center justify-between border-t border-zinc-800/50 mt-4">
+                              <div 
+                                className="flex items-center gap-2 text-xs text-[var(--brand)] hover:opacity-80 cursor-pointer transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCreatorId(char.creatorId);
+                                }}
+                              >
+                                <User className="w-3 h-3" />
+                                {char.creatorName}
+                              </div>
+                              <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1">
+                                {language === 'es' ? 'Ver' : 'View'}
+                                <Sparkles className="w-3 h-3" />
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        </motion.div>
+                      </React.Fragment>
+                    ))}
                   </div>
-                )}
-              </React.Fragment>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
+
+        {/* Mini Profile Dialog */}
+        <Dialog open={!!selectedCharacter} onOpenChange={(open) => !open && setSelectedCharacter(null)}>
+          <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold font-heading flex items-center gap-3">
+                <Avatar className="w-12 h-12">
+                  <AvatarImage src={selectedCharacter?.avatarUrl} referrerPolicy="no-referrer" />
+                  <AvatarFallback>{selectedCharacter?.name[0]}</AvatarFallback>
+                </Avatar>
+                {selectedCharacter?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                {selectedCharacter?.description}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedCharacter?.traits.map(trait => (
+                  <Badge key={trait} variant="secondary" className="bg-zinc-800 text-zinc-300">
+                    {trait}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button 
+                className="bg-[var(--brand)] hover:opacity-90 w-full rounded-full"
+                onClick={() => {
+                  if (selectedCharacter) {
+                    onSelectCharacter(selectedCharacter);
+                    setSelectedCharacter(null);
+                  }
+                }}
+              >
+                {language === 'es' ? 'Comenzar Chat' : 'Start Chat'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Moderation Dialog */}
@@ -263,6 +347,13 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           </div>
         </DialogContent>
       </Dialog>
+
+      <PublicProfileDialog 
+        userId={selectedCreatorId} 
+        creatorName={characters.find(c => c.creatorId === selectedCreatorId)?.creatorName}
+        language={language} 
+        onClose={() => setSelectedCreatorId(null)} 
+      />
     </div>
   );
 }

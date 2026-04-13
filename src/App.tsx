@@ -9,8 +9,10 @@ import PersonalizationView from "./components/PersonalizationView";
 import CreateCharacterView from "./components/CreateCharacterView";
 import LegalView from "./components/LegalView";
 import GlobalSettings from "./components/GlobalSettings";
+import UserProfileView from "./components/UserProfileView";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RewardedAd from "./components/RewardedAd";
+import ToastContainer, { ToastMessage, ToastType } from "./components/Toast";
 import { SHOP_ITEMS } from "./components/ShopView";
 import { Dialog, DialogContent } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
@@ -40,7 +42,7 @@ export default function App() {
   const [theme, setTheme] = useState<AppTheme>('sky');
   const [font, setFont] = useState<AppFont>('sans');
   const [intensity, setIntensity] = useState<Intensity>('medium');
-  const [view, setView] = useState<'explore' | 'chat' | 'legal' | 'shop' | 'personalization' | 'create'>('explore');
+  const [view, setView] = useState<'explore' | 'chat' | 'legal' | 'shop' | 'personalization' | 'create' | 'profile'>('explore');
   const [userStats, setUserStats] = useState<UserStats>({
     coins: 1000, // Initial coins for testing
     purchasedItems: [],
@@ -56,6 +58,16 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = (message: string, type: ToastType = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // Auth Listener
   useEffect(() => {
@@ -218,7 +230,8 @@ export default function App() {
         language,
         currentSession.coreThoughts || [],
         intensity,
-        user.uid
+        user.uid,
+        userStats.profile
       );
 
       const aiMessage: Message = {
@@ -303,7 +316,8 @@ export default function App() {
         language,
         currentSession.coreThoughts || [],
         intensity,
-        user.uid
+        user.uid,
+        userStats.profile
       );
 
       const updatedMessages = currentSession.messages.map(msg => 
@@ -372,7 +386,7 @@ export default function App() {
   };
 
   const handleToggleCoreThought = async (messageId: string) => {
-    if (!currentSession) return;
+    if (!currentSession || !user) return;
     
     const currentThoughts = currentSession.coreThoughts || [];
     let newThoughts = [...currentThoughts];
@@ -381,17 +395,21 @@ export default function App() {
       newThoughts = newThoughts.filter(id => id !== messageId);
     } else {
       if (currentThoughts.length >= 6) {
-        alert(t('coreThoughtsLimit', language));
+        showToast(t('coreThoughtsLimit', language), 'error');
         return;
       }
       newThoughts.push(messageId);
     }
+    
+    // Optimistic UI update
+    setSessions(sessions.map(s => s.id === currentSession.id ? { ...s, coreThoughts: newThoughts } : s));
     
     const chatDoc = doc(db, "chats", currentSession.id);
     await updateDoc(chatDoc, {
       coreThoughts: newThoughts,
       lastUpdated: Date.now()
     });
+    CacheService.invalidate(`query_user_sessions_${user.uid}`);
   };
 
   const handleNewCharacter = () => {
@@ -408,7 +426,7 @@ export default function App() {
     if (!user) return;
     
     if (!personality.name || personality.name.trim() === "") {
-      alert(language === 'es' ? "El personaje debe tener un nombre." : "The character must have a name.");
+      showToast(language === 'es' ? "El personaje debe tener un nombre." : "The character must have a name.", 'error');
       return;
     }
 
@@ -419,7 +437,7 @@ export default function App() {
     if (!moderationResult.isApproved) {
       setIsLoading(false);
       const reason = moderationResult.reason || "Violación de Términos y Condiciones";
-      alert(language === 'es' ? `Tu personaje no fue aprobado: ${reason}` : `Your character was not approved: ${reason}`);
+      showToast(language === 'es' ? `Tu personaje no fue aprobado: ${reason}` : `Your character was not approved: ${reason}`, 'error');
       
       // Create notification for the user
       await addDoc(collection(db, "notifications"), {
@@ -586,10 +604,10 @@ export default function App() {
         setView('explore');
         setIsGlobalSettingsOpen(false);
         
-        alert(language === 'es' ? "Cuenta reseteada con éxito." : "Account reset successfully.");
+        showToast(language === 'es' ? "Cuenta reseteada con éxito." : "Account reset successfully.", 'success');
       } catch (error) {
         console.error("Error resetting account:", error);
-        alert(language === 'es' ? "Error al resetear la cuenta." : "Error resetting account.");
+        showToast(language === 'es' ? "Error al resetear la cuenta." : "Error resetting account.", 'error');
       } finally {
         setIsLoading(false);
       }
@@ -601,7 +619,7 @@ export default function App() {
     
     // Prevent duplicate purchases
     if (userStats.purchasedItems.includes(item.id)) {
-      alert(language === 'es' ? 'Ya posees este artículo.' : 'You already own this item.');
+      showToast(language === 'es' ? 'Ya posees este artículo.' : 'You already own this item.', 'info');
       return;
     }
 
@@ -620,7 +638,7 @@ export default function App() {
   const handleDeleteTheme = async (themeToDelete: AppTheme) => {
     if (!user) return;
     if (['rose', 'emerald', 'amber', 'sky', 'space', 'retro'].includes(themeToDelete)) {
-      alert(language === 'es' ? 'No puedes eliminar temas básicos.' : 'You cannot delete basic themes.');
+      showToast(language === 'es' ? 'No puedes eliminar temas básicos.' : 'You cannot delete basic themes.', 'error');
       return;
     }
 
@@ -706,14 +724,14 @@ export default function App() {
     
     const today = new Date().setHours(0, 0, 0, 0);
     if (userStats.subscription.lastClaimDate >= today) {
-      alert(t('alreadyClaimed', language));
+      showToast(t('alreadyClaimed', language), 'info');
       return;
     }
 
     audioManager.play('pop');
     const newStats: UserStats = {
       ...userStats,
-      coins: userStats.coins + 33,
+      coins: userStats.coins + 50,
       subscription: {
         ...userStats.subscription,
         lastClaimDate: Date.now()
@@ -738,6 +756,7 @@ export default function App() {
             '--bg-opacity': userStats.themeOpacity ?? 0.6
           } as React.CSSProperties}
         >
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
         {/* Background Effects */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           <div 
@@ -787,8 +806,15 @@ export default function App() {
               setView('legal');
               setIsSidebarOpen(false);
             }}
+            onOpenProfile={() => {
+              audioManager.play('click');
+              setView('profile');
+              setIsSidebarOpen(false);
+            }}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
+            notifications={notifications}
+            onOpenNotifications={() => setIsNotificationsOpen(true)}
           />
         )}
 
@@ -809,53 +835,57 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                className={cn("gap-2 rounded-full", view === 'create' && "text-[var(--brand)] bg-[var(--brand)]/10")}
-                onClick={() => {
-                  audioManager.play('click');
-                  setView('create');
-                }}
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">{language === 'es' ? 'Crear' : 'Create'}</span>
-              </Button>
+              <div className={cn("flex items-center gap-0 sm:gap-2", view === 'chat' && "hidden md:flex")}>
+                <Button 
+                  variant="ghost" 
+                  className={cn("gap-2 rounded-full", view === 'create' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                  onClick={() => {
+                    audioManager.play('click');
+                    setView('create');
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">{language === 'es' ? 'Crear' : 'Create'}</span>
+                </Button>
 
-              <Button 
-                variant="ghost" 
-                className={cn("gap-2 rounded-full", view === 'explore' && "text-[var(--brand)] bg-[var(--brand)]/10")}
-                onClick={() => {
-                  audioManager.play('click');
-                  setView('explore');
-                }}
-              >
-                <Compass className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('search', language)}</span>
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  className={cn("gap-2 rounded-full", view === 'explore' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                  onClick={() => {
+                    audioManager.play('click');
+                    setView('explore');
+                  }}
+                >
+                  <Compass className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('search', language)}</span>
+                </Button>
 
-              <Button 
-                variant="ghost" 
-                className={cn("gap-2 rounded-full", view === 'shop' && "text-[var(--brand)] bg-[var(--brand)]/10")}
-                onClick={() => {
-                  audioManager.play('click');
-                  setView('shop');
-                }}
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('shop', language)}</span>
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className={cn("gap-2 rounded-full px-2 sm:px-4", view === 'shop' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                  onClick={() => {
+                    audioManager.play('click');
+                    setView('shop');
+                  }}
+                >
+                  <ShoppingBag className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{t('shop', language)}</span>
+                </Button>
 
-              <Button 
-                variant="ghost" 
-                className={cn("gap-2 rounded-full", view === 'personalization' && "text-[var(--brand)] bg-[var(--brand)]/10")}
-                onClick={() => {
-                  audioManager.play('click');
-                  setView('personalization');
-                }}
-              >
-                <Palette className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('personalization', language)}</span>
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className={cn("gap-2 rounded-full px-2 sm:px-4", view === 'personalization' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                  onClick={() => {
+                    audioManager.play('click');
+                    setView('personalization');
+                  }}
+                >
+                  <Palette className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{t('personalization', language)}</span>
+                </Button>
+              </div>
               
               {!user ? (
                 <Button onClick={signInWithGoogle} className="bg-[var(--brand)] hover:opacity-90 gap-2 rounded-full">
@@ -863,10 +893,10 @@ export default function App() {
                   {language === 'es' ? 'Entrar' : 'Login'}
                 </Button>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5 sm:gap-2">
                   <div 
                     className={cn(
-                      "flex items-center gap-1.5 bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-800 cursor-pointer hover:border-amber-500/50 transition-colors group relative overflow-hidden",
+                      "flex items-center gap-0.5 sm:gap-1.5 bg-zinc-900 px-1.5 sm:px-3 py-1 rounded-full border border-zinc-800 cursor-pointer hover:border-amber-500/50 transition-colors group relative overflow-hidden shrink-0",
                       isAdmin && "hover:border-amber-500"
                     )}
                     onClick={() => {
@@ -879,20 +909,12 @@ export default function App() {
                     title={isAdmin ? (language === 'es' ? "Click para +1000 monedas (Admin)" : "Click for +1000 coins (Admin)") : (language === 'es' ? "Ver anuncio para ganar monedas" : "Watch ad to earn coins")}
                   >
                     <div className="absolute inset-0 bg-amber-500/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-300" />
-                    <Coins className="w-4 h-4 text-amber-400 relative z-10" />
-                    <span className="text-sm font-bold text-amber-100 relative z-10">{userStats.coins}</span>
-                    {!isAdmin && <Plus className="w-3 h-3 text-amber-500 ml-0.5 relative z-10" />}
+                    <Coins className="w-3 h-3 sm:w-4 sm:h-4 text-amber-400 relative z-10" />
+                    <span className="text-[10px] sm:text-sm font-bold text-amber-100 relative z-10">{userStats.coins}</span>
+                    {!isAdmin && <Plus className="w-2.5 h-2.5 text-amber-500 ml-0.5 relative z-10 hidden sm:inline" />}
                   </div>
-                  <div className="relative">
-                    <Button variant="ghost" size="icon" className="rounded-full relative" onClick={() => setIsNotificationsOpen(true)}>
-                      <Bell className="w-5 h-5 text-zinc-400" />
-                      {notifications.filter(n => !n.read).length > 0 && (
-                        <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-                      )}
-                    </Button>
-                  </div>
-                  <Button variant="ghost" size="icon" className="rounded-full" onClick={handleNewCharacter}>
-                    <Plus className="w-5 h-5 text-[var(--brand)]" />
+                  <Button variant="ghost" size="icon" className="rounded-full w-7 h-7 sm:w-10 sm:h-10 shrink-0" onClick={handleNewCharacter}>
+                    <Plus className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-[var(--brand)]" />
                   </Button>
                 </div>
               )}
@@ -940,6 +962,16 @@ export default function App() {
                     setUserStats(newStats);
                     await updateDoc(doc(db, "users", user.uid), { stats: newStats });
                   }}
+                  onBuyCoins={async (amount, price) => {
+                    if (!user) return;
+                    audioManager.play('pop');
+                    const newStats = {
+                      ...userStats,
+                      coins: userStats.coins + amount,
+                    };
+                    setUserStats(newStats);
+                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+                  }}
                   onSubscribe={handleSubscribe}
                   onClaimDaily={handleClaimDaily}
                 />
@@ -963,6 +995,30 @@ export default function App() {
                   onUpdateOpacity={handleUpdateOpacity}
                 />
               </motion.div>
+            ) : view === 'profile' ? (
+              <motion.div
+                key="profile"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <UserProfileView 
+                  language={language}
+                  userStats={userStats}
+                  onSaveProfile={async (profile) => {
+                    if (!user) return;
+                    audioManager.play('pop');
+                    const newStats = {
+                      ...userStats,
+                      profile
+                    };
+                    setUserStats(newStats);
+                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+                    await setDoc(doc(db, "public_profiles", user.uid), profile);
+                  }}
+                />
+              </motion.div>
             ) : view === 'create' ? (
               <motion.div
                 key="create"
@@ -979,6 +1035,7 @@ export default function App() {
                   onDelete={handleDeleteCharacter}
                   isCreator={!activeCharacter || activeCharacter.creatorId === user?.uid || isAdmin}
                   onBack={() => setView('explore')}
+                  showToast={showToast}
                 />
               </motion.div>
             ) : view === 'legal' ? (
@@ -1014,6 +1071,7 @@ export default function App() {
                     onEditMessage={handleEditMessage}
                     onRegenerateMessage={handleRegenerateMessage}
                     onConfigureCharacter={(activeCharacter.creatorId === user?.uid || isAdmin) ? () => setView('create') : undefined}
+                    showToast={showToast}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">

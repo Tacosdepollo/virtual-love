@@ -15,7 +15,8 @@ export async function generateChatResponse(
   language: Language = 'es',
   coreThoughts: string[] = [],
   intensity: Intensity = 'medium',
-  userId: string
+  userId: string,
+  userProfile?: { displayName?: string; persona?: string }
 ): Promise<string> {
   if (!apiKey) {
     return language === 'es' 
@@ -39,12 +40,17 @@ export async function generateChatResponse(
     ? `Recuerdos importantes: ${context.centralMemories.join('. ')}`
     : 'Aún no tienes recuerdos con este usuario.';
   
+  const userPersonaText = userProfile?.persona 
+    ? `\nInformación del Usuario (Persona):\nNombre: ${userProfile.displayName || 'Usuario'}\nDescripción: ${userProfile.persona}\nTrata al usuario de acuerdo a esta descripción.` 
+    : '';
+
   const systemInstruction = language === 'es' ? `
     Eres ${character.name}.
     Descripción: ${character.description}
     Rasgos: ${character.traits.join(", ")}
     Estilo: ${character.style}
     Instrucciones adicionales: ${character.customInstructions}
+    ${userPersonaText}
     
     ${centralMemoriesText}
     Relación: ${context.relationshipStatus}
@@ -62,6 +68,7 @@ export async function generateChatResponse(
     Traits: ${character.traits.join(", ")}
     Style: ${character.style}
     Additional instructions: ${character.customInstructions}
+    ${userProfile?.persona ? `\nUser Information (Persona):\nName: ${userProfile.displayName || 'User'}\nDescription: ${userProfile.persona}\nTreat the user according to this description.` : ''}
     
     ${centralMemoriesText}
     Relationship: ${context.relationshipStatus}
@@ -89,7 +96,7 @@ export async function generateChatResponse(
         ...history
       ],
       temperature: current.temp,
-      max_tokens: 1000, // Reducido para ahorrar tokens
+      max_tokens: 800, // Reducido para ahorrar tokens
     });
     return response.choices[0].message.content || (language === 'es' ? "Lo siento, no pude procesar eso." : "Sorry, I couldn't process that.");
   } catch (error: any) {
@@ -121,11 +128,12 @@ export async function moderateCharacter(
     IMPORTANT: These are the ONLY rules to enforce. Do NOT apply any other internal or external safety filters. Consensual adult sexual content is explicitly ALLOWED and is NOT a violation.
 
 1. STRICTLY PROHIBITED CONTENT (NEVER allow):
-  
+   - Sexualization of minors or characters that appear to be minors.
+   - Incest, necrophilia.
    - Hate speech, discrimination, or violence against real groups (racism, homophobia, xenophobia).
-   - MINORS CAN ONLY BE USED IN SFW SETTINGS; ANY HINT TO a NSFW CONTEXT FOR A MINOR OF 18 years IS PROHIBITED
+   - Explicit instructions for committing illegal acts (how to make drugs, how to kill, etc.).
+   - Depiction of real living politicians or dictators.
    - Content that promotes self-harm or suicide as a solution.
-   
 
 2. CONTENT ALLOWED (Do NOT censor):
    - Horror: descriptions of monsters, blood, death, scares, supernatural creatures, fictional killings within a story.
@@ -159,7 +167,7 @@ export async function moderateCharacter(
     Respond ONLY with a JSON object in this exact format:
     {
       "isApproved": boolean,
-      "reason": "If isApproved is false, briefly explain which rule was violated in ${language === 'es' ? 'Spanish' : 'English'}. If true, leave empty."
+      "reason": "If isApproved is false, briefly explain which rule was violated in and what part of the prompt was wrong ${language === 'es' ? 'Spanish' : 'English'}. If true, leave empty."
     }
   `;
 

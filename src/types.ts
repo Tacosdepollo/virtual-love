@@ -48,9 +48,9 @@ export interface Personality {
   isNSFW: boolean;
 }
 
-export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'emerald' | 'calma' | 'proteccion' | 'rose'| 'cyberpunk';
+export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'calma' | 'proteccion' | 'cyberpunk' | 'midnight' | 'forest' | 'sunset' | 'ocean' | 'lava' | 'neon' | 'sakura' | 'gold' | 'mint' | 'violet';
 
-export type AppFont = 'sans' | 'audiowide' | 'jacquard' | 'montecarlo' | 'saira' | 'silkscreen';
+export type AppFont = 'sans' | 'audiowide' | 'jacquard' | 'montecarlo' | 'saira' | 'silkscreen' | 'playfair' | 'montserrat' | 'oswald' | 'lobster' | 'pacifico' | 'righteous' | 'bangers' | 'orbitron' | 'press-start' | 'dancing-script';
 
 export interface ShopItem {
   id: string;
@@ -79,6 +79,13 @@ export interface AppNotification {
   createdAt: number;
 }
 
+export interface UserProfile {
+  displayName?: string;
+  avatarUrl?: string;
+  bio?: string;
+  persona?: string; // Description for the bot
+}
+
 export interface UserStats {
   coins: number;
   purchasedItems: string[]; // IDs of ShopItems
@@ -86,6 +93,7 @@ export interface UserStats {
   unlockedThemes: AppTheme[];
   themeOpacity?: number;
   subscription?: Subscription;
+  profile?: UserProfile;
 }
 
 export type Intensity = 'low' | 'medium' | 'high' | 'extreme';

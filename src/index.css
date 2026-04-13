@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Lobster&family=Pacifico&family=Righteous&family=Bangers&family=Orbitron:wght@400;700&family=Press+Start+2P&family=Dancing+Script:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @font-face {
@@ -57,6 +57,16 @@
   --font-montecarlo: "MonteCarlo", cursive;
   --font-saira: "Saira Stencil One", system-ui;
   --font-silkscreen: "Silkscreen", cursive;
+  --font-playfair: "Playfair Display", serif;
+  --font-montserrat: "Montserrat", sans-serif;
+  --font-oswald: "Oswald", sans-serif;
+  --font-lobster: "Lobster", cursive;
+  --font-pacifico: "Pacifico", cursive;
+  --font-righteous: "Righteous", cursive;
+  --font-bangers: "Bangers", system-ui;
+  --font-orbitron: "Orbitron", sans-serif;
+  --font-press-start: "Press Start 2P", system-ui;
+  --font-dancing-script: "Dancing Script", cursive;
 }
 
 @import "tw-animate-css";
@@ -114,6 +124,16 @@
     --font-montecarlo: "MonteCarlo", cursive;
     --font-saira: "Saira Stencil One", system-ui;
     --font-silkscreen: "Silkscreen", cursive;
+    --font-playfair: "Playfair Display", serif;
+    --font-montserrat: "Montserrat", sans-serif;
+    --font-oswald: "Oswald", sans-serif;
+    --font-lobster: "Lobster", cursive;
+    --font-pacifico: "Pacifico", cursive;
+    --font-righteous: "Righteous", cursive;
+    --font-bangers: "Bangers", system-ui;
+    --font-orbitron: "Orbitron", sans-serif;
+    --font-press-start: "Press Start 2P", system-ui;
+    --font-dancing-script: "Dancing Script", cursive;
     --brand: oklch(0.585 0.233 277.117); /* Default Indigo */
     --brand-foreground: oklch(0.985 0 0);
     --background: oklch(1 0 0);
@@ -261,6 +281,66 @@
   --bg-image: url('https://www.transparenttextures.com/patterns/paper-fibers.png');
   --bg-opacity: 0.15;
   --bg-size: auto;
+}
+
+[data-theme='midnight'] {
+  --brand: oklch(0.4 0.15 260);
+  --bg-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+  --bg-opacity: 0.6;
+  --background: oklch(0.1 0.05 260);
+  --foreground: oklch(0.9 0.02 260);
+}
+[data-theme='forest'] {
+  --brand: oklch(0.5 0.15 140);
+  --bg-image: url('https://www.transparenttextures.com/patterns/leaf.png');
+  --bg-opacity: 0.3;
+  --background: oklch(0.15 0.05 140);
+}
+[data-theme='sunset'] {
+  --brand: oklch(0.6 0.2 30);
+  --bg-image: linear-gradient(to bottom, oklch(0.6 0.2 30), oklch(0.4 0.2 300));
+  --bg-opacity: 0.2;
+}
+[data-theme='ocean'] {
+  --brand: oklch(0.5 0.15 230);
+  --bg-image: url('https://www.transparenttextures.com/patterns/waves.png');
+  --bg-opacity: 0.4;
+}
+[data-theme='lava'] {
+  --brand: oklch(0.5 0.25 25);
+  --bg-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+  --bg-opacity: 0.5;
+  --background: oklch(0.1 0.05 25);
+}
+[data-theme='neon'] {
+  --brand: oklch(0.8 0.3 140);
+  --bg-image: url('https://www.transparenttextures.com/patterns/grid-me.png');
+  --bg-opacity: 0.2;
+  --background: oklch(0.05 0 0);
+}
+[data-theme='sakura'] {
+  --brand: oklch(0.8 0.15 0);
+  --bg-image: url('https://www.transparenttextures.com/patterns/pinstripe-light.png');
+  --bg-opacity: 0.3;
+  --background: oklch(0.95 0.05 0);
+}
+[data-theme='gold'] {
+  --brand: oklch(0.75 0.15 80);
+  --bg-image: url('https://www.transparenttextures.com/patterns/leather.png');
+  --bg-opacity: 0.2;
+  --background: oklch(0.1 0.05 80);
+}
+[data-theme='mint'] {
+  --brand: oklch(0.85 0.1 160);
+  --bg-image: url('https://www.transparenttextures.com/patterns/soft-wallpaper.png');
+  --bg-opacity: 0.2;
+  --background: oklch(0.98 0.02 160);
+}
+[data-theme='violet'] {
+  --brand: oklch(0.5 0.2 300);
+  --bg-image: url('https://www.transparenttextures.com/patterns/skulls.png');
+  --bg-opacity: 0.1;
+  --background: oklch(0.1 0.05 300);
 }
 
 .dark {

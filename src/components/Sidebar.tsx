@@ -1,8 +1,8 @@
 import React from "react";
-import { ChatSession, Language } from "../types";
+import { ChatSession, Language, AppNotification } from "../types";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
-import { MessageSquare, Plus, Trash2, Settings, Heart, X } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Settings, Heart, X, User, Bell } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import { audioManager } from "../lib/audio";
@@ -16,8 +16,11 @@ interface SidebarProps {
   onDeleteSession: (id: string) => void;
   onOpenSettings: () => void;
   onOpenLegal: () => void;
+  onOpenProfile: () => void;
   isOpen: boolean;
   onClose: () => void;
+  notifications: AppNotification[];
+  onOpenNotifications: () => void;
 }
 
 export default function Sidebar({
@@ -29,8 +32,11 @@ export default function Sidebar({
   onDeleteSession,
   onOpenSettings,
   onOpenLegal,
+  onOpenProfile,
   isOpen,
   onClose,
+  notifications,
+  onOpenNotifications,
 }: SidebarProps) {
   return (
     <>
@@ -56,7 +62,7 @@ export default function Sidebar({
           </Button>
         </div>
 
-      <ScrollArea className="flex-1 px-2 mt-4">
+      <div className="flex-1 px-2 mt-4 overflow-y-auto custom-scrollbar">
         <div className="space-y-1">
           <h3 className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
             {t('sidebarTitle', language)}
@@ -90,7 +96,7 @@ export default function Sidebar({
             </div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="p-4 border-t border-zinc-800 space-y-1">
         <a 
@@ -106,6 +112,27 @@ export default function Sidebar({
           </div>
           {t('joinDiscord', language)}
         </a>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={onOpenProfile}
+            className="flex-1 justify-start gap-2 text-zinc-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10"
+          >
+            <User className="w-4 h-4" />
+            {language === 'es' ? 'Mi Perfil' : 'My Profile'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onOpenNotifications}
+            className="text-zinc-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10 relative"
+          >
+            <Bell className="w-4 h-4" />
+            {notifications.filter(n => !n.read).length > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+          </Button>
+        </div>
         <Button
           variant="ghost"
           onClick={onOpenSettings}

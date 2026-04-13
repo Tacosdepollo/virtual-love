@@ -19,6 +19,7 @@ interface CreateCharacterViewProps {
   onDelete?: () => void;
   isCreator?: boolean;
   onBack: () => void;
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 const THEMES: { id: AppTheme; color: string; name: { es: string; en: string } }[] = [
@@ -37,7 +38,8 @@ export default function CreateCharacterView({
   onSave, 
   onDelete, 
   isCreator,
-  onBack
+  onBack,
+  showToast
 }: CreateCharacterViewProps) {
   const [edited, setEdited] = useState<Personality>({
     isPublic: true,
@@ -79,7 +81,11 @@ export default function CreateCharacterView({
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert(selectedLanguage === 'es' ? "La imagen es demasiado grande (máx 5MB)" : "Image is too large (max 5MB)");
+      if (showToast) {
+        showToast(selectedLanguage === 'es' ? "La imagen es demasiado grande (máx 5MB)" : "Image is too large (max 5MB)", 'error');
+      } else {
+        alert(selectedLanguage === 'es' ? "La imagen es demasiado grande (máx 5MB)" : "Image is too large (max 5MB)");
+      }
       return;
     }
 

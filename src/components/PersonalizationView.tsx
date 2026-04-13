@@ -32,7 +32,12 @@ export default function PersonalizationView({
 }: PersonalizationViewProps) {
   
   const allThemes = Array.from(new Set([...DEFAULT_THEMES, ...userStats.unlockedThemes]));
-  const allFonts = Array.from(new Set([...DEFAULT_FONTS, 'audiowide', 'jacquard', 'montecarlo', 'saira', 'silkscreen'])).filter(f => 
+  const allFonts = Array.from(new Set([
+    ...DEFAULT_FONTS, 
+    'audiowide', 'jacquard', 'montecarlo', 'saira', 'silkscreen',
+    'playfair', 'montserrat', 'oswald', 'lobster', 'pacifico', 
+    'righteous', 'bangers', 'orbitron', 'press-start', 'dancing-script'
+  ])).filter(f => 
     f === 'sans' || userStats.purchasedItems.some(id => id === `font_${f}`)
   );
 

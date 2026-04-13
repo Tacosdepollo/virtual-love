@@ -24,12 +24,6 @@ export interface ConversationContext {
   lastUpdated: Timestamp;
 }
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
-}
-
 // Obtener contexto completo para la IA (solo 2 lecturas o desde caché)
 export async function getFullContext(characterId: string, userId: string) {
   const centralRef = doc(db, 'centralMemories', `${userId}_${characterId}`);
@@ -66,8 +60,8 @@ export async function updateConversationContext(
     const current = snap.exists() ? snap.data() as ConversationContext : null;
     
     const newMessages = [
-      { role: 'user' as const, content: userMessage, timestamp: Date.now() },
-      { role: 'assistant' as const, content: aiResponse, timestamp: Date.now() }
+      { id: Date.now().toString() + '-u', role: 'user' as const, content: userMessage, timestamp: Date.now() },
+      { id: Date.now().toString() + '-a', role: 'assistant' as const, content: aiResponse, timestamp: Date.now() }
     ];
     const updatedMessages = current
       ? [...current.lastMessages, ...newMessages].slice(-15)

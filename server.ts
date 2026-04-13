@@ -36,6 +36,7 @@ async function startServer() {
 
   // PayPal Endpoints
   app.post("/api/paypal/create-order", async (req, res) => {
+    const { amount, description } = req.body;
     try {
       const accessToken = await getPayPalAccessToken();
       const response = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
@@ -50,9 +51,9 @@ async function startServer() {
             {
               amount: {
                 currency_code: 'USD',
-                value: '2.50',
+                value: amount || '2.50',
               },
-              description: 'GIMS+ Subscription (30 days)',
+              description: description || 'GIMS+ Subscription (30 days)',
             },
           ],
         }),

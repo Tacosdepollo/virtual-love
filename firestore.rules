@@ -103,6 +103,14 @@ service cloud.firestore {
              data.lastUpdated is number;
     }
 
+    function isValidPublicProfile(data) {
+      return data.keys().hasAny(['displayName', 'avatarUrl', 'bio', 'persona']) &&
+             (!('displayName' in data) || data.displayName is string && data.displayName.size() < 100) &&
+             (!('avatarUrl' in data) || data.avatarUrl is string && data.avatarUrl.size() < 1000000) &&
+             (!('bio' in data) || data.bio is string && data.bio.size() < 1000) &&
+             (!('persona' in data) || data.persona is string && data.persona.size() < 5000);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -147,6 +155,11 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
       allow update: if isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /public_profiles/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidPublicProfile(request.resource.data) || isAdmin();
     }
 
     match /{path=**} {

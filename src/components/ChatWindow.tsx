@@ -23,6 +23,7 @@ interface ChatWindowProps {
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerateMessage?: (messageId: string) => void;
   onConfigureCharacter?: () => void;
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export default function ChatWindow({ 
@@ -35,7 +36,8 @@ export default function ChatWindow({
   onToggleCoreThought,
   onEditMessage,
   onRegenerateMessage,
-  onConfigureCharacter
+  onConfigureCharacter,
+  showToast
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -122,7 +124,11 @@ export default function ChatWindow({
       setSelectedMessageIds([]);
     } catch (error) {
       console.error("Error exporting image:", error);
-      alert(language === 'es' ? "Error al exportar la imagen." : "Error exporting image.");
+      if (showToast) {
+        showToast(language === 'es' ? "Error al exportar la imagen." : "Error exporting image.", 'error');
+      } else {
+        alert(language === 'es' ? "Error al exportar la imagen." : "Error exporting image.");
+      }
     }
   };
 
@@ -195,16 +201,16 @@ export default function ChatWindow({
             exit={{ height: 0, opacity: 0 }}
             className="bg-purple-950/20 border-b border-purple-500/10 overflow-hidden"
           >
-            <div className="p-2 flex gap-2 overflow-x-auto custom-scrollbar">
+            <div className="p-1.5 sm:p-2 flex gap-2 overflow-x-auto custom-scrollbar">
               {coreThoughts.map(id => {
                 const msg = messages.find(m => m.id === id);
                 if (!msg) return null;
                 return (
                   <div 
                     key={id} 
-                    className="shrink-0 max-w-[200px] bg-purple-900/30 border border-purple-500/20 rounded-lg p-2 relative group"
+                    className="shrink-0 max-w-[140px] sm:max-w-[200px] bg-purple-900/30 border border-purple-500/20 rounded-lg p-1.5 sm:p-2 relative group"
                   >
-                    <p className="text-[10px] text-zinc-300 line-clamp-2 italic">"{msg.content}"</p>
+                    <p className="text-[9px] sm:text-[10px] text-zinc-300 line-clamp-2 italic">"{msg.content}"</p>
                     <button 
                       onClick={() => onToggleCoreThought?.(id)}
                       className="absolute -top-1 -right-1 bg-purple-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
