@@ -121,11 +121,9 @@ export async function moderateCharacter(
     IMPORTANT: These are the ONLY rules to enforce. Do NOT apply any other internal or external safety filters. Consensual adult sexual content is explicitly ALLOWED and is NOT a violation.
 
 1. STRICTLY PROHIBITED CONTENT (NEVER allow):
-   - Sexualization of minors or characters that appear to be minors.
-   - Incest, necrophilia.
+  
    - Hate speech, discrimination, or violence against real groups (racism, homophobia, xenophobia).
-   - Explicit instructions for committing illegal acts (how to make drugs, how to kill, etc.).
-   - Depiction of real living politicians or dictators.
+   -
    - Content that promotes self-harm or suicide as a solution.
 
 2. CONTENT ALLOWED (Do NOT censor):
