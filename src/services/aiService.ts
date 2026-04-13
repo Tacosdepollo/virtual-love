@@ -89,7 +89,7 @@ export async function generateChatResponse(
         ...history
       ],
       temperature: current.temp,
-      max_tokens: 800, // Reducido para ahorrar tokens
+      max_tokens: 1000, // Reducido para ahorrar tokens
     });
     return response.choices[0].message.content || (language === 'es' ? "Lo siento, no pude procesar eso." : "Sorry, I couldn't process that.");
   } catch (error: any) {
