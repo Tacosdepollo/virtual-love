@@ -7,6 +7,20 @@ export interface Message {
   timestamp: number;
 }
 
+export interface World {
+  id: string;
+  name: string;
+  description: string;
+  expandedLore: string;
+  creatorId: string;
+  creatorName: string;
+  isPublic: boolean;
+  tags: string[];
+  usageCount: number;
+  createdAt: any;
+  bannerUrl?: string;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -14,12 +28,15 @@ export interface Character {
   traits: string[];
   style: string;
   customInstructions: string;
+  prompts?: { id: string; name: string; content: string }[];
   creatorId: string;
   creatorName: string;
   avatarUrl?: string;
   isPublic: boolean;
   isNSFW: boolean;
   tags: string[];
+  worldId?: string;
+  worldName?: string;
   chatCount: number;
   createdAt: any;
 }
@@ -43,12 +60,13 @@ export interface Personality {
   style: string;
   description: string;
   customInstructions?: string;
+  prompts?: { id: string; name: string; content: string }[];
   avatarUrl?: string;
   isPublic: boolean;
   isNSFW: boolean;
 }
 
-export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'calma' | 'proteccion' | 'cyberpunk' | 'midnight' | 'forest' | 'sunset' | 'ocean' | 'lava' | 'neon' | 'sakura' | 'gold' | 'mint' | 'violet';
+export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'calma' | 'proteccion' | 'cyberpunk' | 'frutiger' | 'midnight' | 'forest' | 'sunset' | 'ocean' | 'lava' | 'neon' | 'sakura' | 'gold' | 'mint' | 'violet';
 
 export type AppFont = 'sans' | 'audiowide' | 'jacquard' | 'montecarlo' | 'saira' | 'silkscreen' | 'playfair' | 'montserrat' | 'oswald' | 'lobster' | 'pacifico' | 'righteous' | 'bangers' | 'orbitron' | 'press-start' | 'dancing-script';
 
@@ -79,11 +97,19 @@ export interface AppNotification {
   createdAt: number;
 }
 
+export interface UserPersona {
+  id: string;
+  name: string;
+  description: string;
+  avatarUrl?: string;
+}
+
 export interface UserProfile {
   displayName?: string;
   avatarUrl?: string;
   bio?: string;
-  persona?: string; // Description for the bot
+  personas?: UserPersona[];
+  activePersonaId?: string;
 }
 
 export interface UserStats {

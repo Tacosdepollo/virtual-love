@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import Markdown from 'react-markdown';
+import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
+import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { getCachedQuery } from "../lib/cache";
-import { Character, Language, UserStats } from "../types";
+import { Character, Language, UserStats, World } from "../types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { MessageSquare, User, Sparkles, Plus, Search, Filter, ShieldAlert } from "lucide-react";
+import { MessageSquare, User, Sparkles, Plus, Search, Filter, ShieldAlert, Globe } from "lucide-react";
 import { motion } from "motion/react";
 import { t } from "../translations";
 import { Input } from "./ui/input";
@@ -16,6 +17,7 @@ import { audioManager } from "../lib/audio";
 import AdSenseFluid from "./AdSenseFluid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import PublicProfileDialog from "./PublicProfileDialog";
+import EditWorldDialog from "./EditWorldDialog";
 
 interface ExploreViewProps {
   language: Language;
@@ -35,7 +37,9 @@ const MODERATION_REASONS = [
 ];
 
 export default function ExploreView({ language, onSelectCharacter, onCreateCharacter, isAdmin, onDeleteCharacter, userStats }: ExploreViewProps) {
+  const [mode, setMode] = useState<'characters' | 'worlds'>('characters');
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [worlds, setWorlds] = useState<World[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNSFW, setShowNSFW] = useState(false);
@@ -44,31 +48,67 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null);
   const [deleteReason, setDeleteReason] = useState(MODERATION_REASONS[0]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [selectedWorld, setSelectedWorld] = useState<World | null>(null);
+  const [editingWorld, setEditingWorld] = useState<World | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCharacters = async () => {
-      const q = query(
-        collection(db, "characters"),
-        where("isPublic", "==", true),
-        orderBy("chatCount", "desc"),
-        limit(100)
-      );
-
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        // Usamos caché con TTL de 30 minutos para ahorrar lecturas masivas
-        const chars = await getCachedQuery<Character>(q, "explore_public_chars", 30 * 60 * 1000);
-        setCharacters(chars);
+        if (mode === 'characters') {
+          const q = query(
+            collection(db, "characters"),
+            where("isPublic", "==", true),
+            orderBy("chatCount", "desc"),
+            limit(100)
+          );
+          const chars = await getCachedQuery<Character>(q, "explore_public_chars", 30 * 60 * 1000);
+          setCharacters(chars);
+        } else {
+          if (!auth.currentUser) return;
+          
+          // Fetch public worlds
+          const publicQuery = query(
+            collection(db, "worlds"),
+            where("isPublic", "==", true),
+            limit(100)
+          );
+          
+          // Fetch user's private worlds
+          const privateQuery = query(
+            collection(db, "worlds"),
+            where("creatorId", "==", auth.currentUser.uid),
+            where("isPublic", "==", false),
+            limit(100)
+          );
+
+          const [publicSnapshot, privateSnapshot] = await Promise.all([
+            getDocs(publicQuery),
+            getDocs(privateQuery)
+          ]);
+
+          const publicWorlds = publicSnapshot.docs.map(doc => doc.data() as World);
+          const privateWorlds = privateSnapshot.docs.map(doc => doc.data() as World);
+          
+          const allWorlds = [...publicWorlds, ...privateWorlds];
+          // Deduplicate
+          const uniqueWorlds = Array.from(new Map(allWorlds.map(w => [w.id, w])).values());
+          
+          // Sort client-side
+          uniqueWorlds.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
+          setWorlds(uniqueWorlds);
+        }
       } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, "characters");
+        handleFirestoreError(error, OperationType.LIST, mode);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCharacters();
-  }, []);
+    fetchData();
+  }, [mode]);
 
   // Group characters by tag
   const groupedCharacters = characters.reduce((acc, char) => {
@@ -99,13 +139,30 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
               {language === 'es' ? 'Descubre y chatea con personalidades únicas creadas por la comunidad.' : 'Discover and chat with unique personalities created by the community.'}
             </p>
           </div>
-          <Button onClick={onCreateCharacter} className="bg-[var(--brand)] hover:opacity-90 gap-2 h-12 px-6 rounded-full">
-            <Plus className="w-5 h-5" />
-            {language === 'es' ? 'Crear Personaje' : 'Create Character'}
-          </Button>
         </div>
 
         <AdSenseFluid />
+
+        <div className="flex gap-4 border-b border-zinc-800 pb-2">
+          <button
+            onClick={() => setMode('characters')}
+            className={cn(
+              "text-lg font-bold pb-2 border-b-2 transition-colors",
+              mode === 'characters' ? "text-[var(--brand)] border-[var(--brand)]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+            )}
+          >
+            {t('characters', language)}
+          </button>
+          <button
+            onClick={() => setMode('worlds')}
+            className={cn(
+              "text-lg font-bold pb-2 border-b-2 transition-colors",
+              mode === 'worlds' ? "text-[var(--brand)] border-[var(--brand)]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+            )}
+          >
+            {t('worlds', language)}
+          </button>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
@@ -139,31 +196,33 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
         </div>
 
         {/* Category Buttons */}
-        <div className="flex overflow-x-auto pb-2 gap-2 custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
-          <Button
-            variant="ghost"
-            onClick={() => setSelectedCategory('All')}
-            className={cn(
-              "rounded-full whitespace-nowrap px-6",
-              selectedCategory === 'All' ? "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" : "bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-            )}
-          >
-            {language === 'es' ? 'Todos' : 'All'}
-          </Button>
-          {categories.map(category => (
+        {mode === 'characters' && (
+          <div className="flex overflow-x-auto pb-2 gap-2 custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
             <Button
-              key={category}
               variant="ghost"
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => setSelectedCategory('All')}
               className={cn(
-                "rounded-full whitespace-nowrap px-6 capitalize",
-                selectedCategory === category ? "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" : "bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                "rounded-full whitespace-nowrap px-6",
+                selectedCategory === 'All' ? "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" : "bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
               )}
             >
-              {category}
+              {language === 'es' ? 'Todos' : 'All'}
             </Button>
-          ))}
-        </div>
+            {categories.map(category => (
+              <Button
+                key={category}
+                variant="ghost"
+                onClick={() => setSelectedCategory(category)}
+                className={cn(
+                  "rounded-full whitespace-nowrap px-6 capitalize",
+                  selectedCategory === category ? "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" : "bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                )}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        )}
         
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -171,7 +230,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
               <div key={i} className="h-64 bg-zinc-900/50 rounded-2xl animate-pulse border border-zinc-800" />
             ))}
           </div>
-        ) : (
+        ) : mode === 'characters' ? (
           <div className="space-y-12">
             {categories.filter(c => selectedCategory === 'All' || c === selectedCategory).map(category => {
               const categoryChars = groupedCharacters[category].filter(char => {
@@ -275,6 +334,82 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
               );
             })}
           </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {worlds.filter(w => w.name.toLowerCase().includes(searchQuery.toLowerCase()) || w.description.toLowerCase().includes(searchQuery.toLowerCase())).map((world, idx) => (
+              <motion.div
+                key={world.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+              >
+                <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => setSelectedWorld(world)}>
+                  {world.bannerUrl && (
+                    <div className="h-32 w-full overflow-hidden">
+                      <img src={world.bannerUrl} alt={world.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
+                  )}
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
+                          <Globe className="w-5 h-5 text-[var(--brand)]" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg font-bold text-zinc-100 line-clamp-1">{world.name}</CardTitle>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setSelectedCreatorId(world.creatorId); }}
+                            className="text-xs text-zinc-500 hover:text-[var(--brand)] transition-colors text-left"
+                          >
+                            by {world.creatorName}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 pb-2">
+                    <CardDescription className="text-zinc-400 line-clamp-3 text-sm">
+                      {world.description}
+                    </CardDescription>
+                    <div className="flex flex-wrap gap-1 mt-3">
+                      {world.tags?.slice(0, 3).map(tag => (
+                        <Badge key={tag} variant="outline" className="text-[10px] bg-zinc-900/50 border-zinc-800 text-zinc-400">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="pt-2 border-t border-zinc-800/30 flex justify-between items-center bg-zinc-900/10">
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                      <User className="w-3.5 h-3.5" />
+                      {world.usageCount || 0}
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1">
+                      {language === 'es' ? 'Ver Lore' : 'View Lore'}
+                      <Sparkles className="w-3 h-3" />
+                    </Button>
+                    {auth.currentUser?.uid === world.creatorId && (
+                      <Button variant="ghost" size="sm" className="text-zinc-400 hover:bg-zinc-800 gap-1" onClick={(e) => { e.stopPropagation(); setEditingWorld(world); }}>
+                        {language === 'es' ? 'Editar' : 'Edit'}
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Edit World Dialog */}
+        {editingWorld && (
+          <EditWorldDialog 
+            world={editingWorld} 
+            language={language} 
+            onClose={() => setEditingWorld(null)} 
+            onUpdate={(updatedWorld) => {
+              setWorlds(worlds.map(w => w.id === updatedWorld.id ? updatedWorld : w));
+            }}
+          />
         )}
 
         {/* Mini Profile Dialog */}
@@ -317,6 +452,51 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* World Dialog */}
+      <Dialog open={!!selectedWorld} onOpenChange={(open) => !open && setSelectedWorld(null)}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-2xl max-h-[80vh] overflow-y-auto custom-scrollbar">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold font-heading flex items-center gap-3">
+              <Globe className="w-6 h-6 text-[var(--brand)]" />
+              {selectedWorld?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <h3 className="text-sm font-bold text-[var(--brand)]">{t('worldDesc', language)}</h3>
+              <p className="text-sm text-zinc-300 leading-relaxed">
+                {selectedWorld?.description}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-bold text-[var(--brand)]">{t('worldLore', language)}</h3>
+              <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 text-sm text-zinc-300 leading-relaxed markdown-body">
+                <Markdown>{selectedWorld?.expandedLore}</Markdown>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedWorld?.tags?.map(tag => (
+                <Badge key={tag} variant="secondary" className="bg-zinc-800 text-zinc-300">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end pt-4 border-t border-zinc-800">
+            <Button 
+              className="bg-[var(--brand)] hover:opacity-90 rounded-full"
+              onClick={() => {
+                setSelectedWorld(null);
+                onCreateCharacter();
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {language === 'es' ? 'Crear Personaje en este Mundo' : 'Create Character in this World'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Moderation Dialog */}
       <Dialog open={!!characterToDelete} onOpenChange={(open) => !open && setCharacterToDelete(null)}>

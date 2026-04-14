@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { User, Bot } from 'lucide-react';
-import { Language, UserProfile, Character } from '../types';
+import { User, Bot, Globe } from 'lucide-react';
+import { Language, UserProfile, Character, World } from '../types';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ScrollArea } from './ui/scroll-area';
@@ -17,6 +17,7 @@ interface PublicProfileDialogProps {
 export default function PublicProfileDialog({ userId, creatorName, language, onClose }: PublicProfileDialogProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [worlds, setWorlds] = useState<World[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
@@ -40,15 +41,24 @@ export default function PublicProfileDialog({ userId, creatorName, language, onC
         }
 
         // Fetch Characters
-        const q = query(
+        const charsQuery = query(
           collection(db, 'characters'),
           where('creatorId', '==', userId),
           where('isPublic', '==', true)
         );
-        const charsSnap = await getDocs(q);
+        const charsSnap = await getDocs(charsQuery);
         const chars = charsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Character));
         setCharacters(chars);
 
+        // Fetch Worlds
+        const worldsQuery = query(
+          collection(db, 'worlds'),
+          where('creatorId', '==', userId),
+          where('isPublic', '==', true)
+        );
+        const worldsSnap = await getDocs(worldsQuery);
+        const worlds = worldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as World));
+        setWorlds(worlds);
       } catch (err) {
         console.error("Error fetching user data:", err);
         setError(true);
@@ -111,6 +121,29 @@ export default function PublicProfileDialog({ userId, creatorName, language, onC
                         </Avatar>
                         <span className="text-xs text-zinc-400 group-hover:text-zinc-200 line-clamp-2 leading-tight">
                           {char.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {worlds.length > 0 && (
+                <div className="w-full mt-6 pt-6 border-t border-zinc-800/50 text-left">
+                  <h4 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    {language === 'es' ? 'Mundos Creados' : 'Created Worlds'}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {worlds.map(world => (
+                      <div key={world.id} className="flex flex-col gap-2 group">
+                        {world.bannerUrl && (
+                          <div className="h-20 w-full overflow-hidden rounded-lg">
+                            <img src={world.bannerUrl} alt={world.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                        )}
+                        <span className="text-xs text-zinc-400 group-hover:text-zinc-200 line-clamp-2 leading-tight">
+                          {world.name}
                         </span>
                       </div>
                     ))}

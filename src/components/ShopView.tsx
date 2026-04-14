@@ -242,7 +242,7 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
               <CardContent className="flex-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <p className="text-sm text-zinc-300">{t('subscriptionBenefit1', language)}</p>
+                    <p className="text-sm text-zinc-300">{language === 'es' ? '50 monedas gratis cada día' : '50 free coins every day'}</p>
                     <p className="text-sm text-zinc-300">{t('subscriptionBenefit2', language)}</p>
                     <p className="text-sm text-zinc-300">{t('subscriptionBenefit3', language)}</p>
                   </div>
@@ -250,6 +250,7 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
                     <Coins className="w-8 h-8 text-amber-400 mb-2" />
                     <span className="text-2xl font-bold text-white">1500</span>
                     <span className="text-[10px] uppercase tracking-widest text-zinc-500">Monedas / Mes</span>
+                    <div className="mt-2 text-sm font-bold text-[var(--brand)]">$4.99 / mes</div>
                   </div>
                 </div>
               </CardContent>

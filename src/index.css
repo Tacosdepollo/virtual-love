@@ -1,6 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Lobster&family=Pacifico&family=Righteous&family=Bangers&family=Orbitron:wght@400;700&family=Press+Start+2P&family=Dancing+Script:wght@400;700&display=swap');
 @import "tailwindcss";
 
+@layer components {
+  .markdown-body strong {
+    @apply font-bold text-white;
+  }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+    @apply font-bold text-[var(--brand)];
+  }
+  .markdown-body p {
+    @apply mb-2;
+  }
+}
+
 @font-face {
   font-family: 'Audiowide';
   src: url('/fonts/Audiowide-Regular.ttf') format('truetype');

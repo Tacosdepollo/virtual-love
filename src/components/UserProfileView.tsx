@@ -4,9 +4,10 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Save, User, Image as ImageIcon, Upload } from 'lucide-react';
+import { Save, User, Image as ImageIcon, Upload, Plus, Trash2, Pencil } from 'lucide-react';
 import { t } from '../translations';
 import { motion } from 'motion/react';
+import { cn } from '../lib/utils';
 
 interface UserProfileViewProps {
   language: Language;
@@ -18,8 +19,12 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
   const [displayName, setDisplayName] = useState(userStats.profile?.displayName || '');
   const [avatarUrl, setAvatarUrl] = useState(userStats.profile?.avatarUrl || '');
   const [bio, setBio] = useState(userStats.profile?.bio || '');
-  const [persona, setPersona] = useState(userStats.profile?.persona || '');
+  const [personas, setPersonas] = useState(userStats.profile?.personas || []);
+  const [activePersonaId, setActivePersonaId] = useState(userStats.profile?.activePersonaId || '');
+  const [editingPersonaId, setEditingPersonaId] = useState<string | null>(null);
+  const [editingPersonaData, setEditingPersonaData] = useState({ name: '', description: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,9 +35,12 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
       displayName,
       avatarUrl,
       bio,
-      persona
+      personas,
+      activePersonaId
     });
     setIsSaving(false);
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,21 +149,79 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
           </div>
 
           {/* Persona Section (For AI) */}
-          <div className="space-y-2 pt-4 border-t border-zinc-800/50">
+          <div className="space-y-4 pt-4 border-t border-zinc-800/50">
             <label className="text-sm font-medium text-[var(--brand)] flex items-center gap-2">
-              {language === 'es' ? 'Descripción para el Bot (Persona)' : 'Bot Description (Persona)'}
+              {language === 'es' ? 'Tus Personas' : 'Your Personas'}
             </label>
-            <p className="text-xs text-zinc-500 mb-2">
-              {language === 'es' 
-                ? 'Esta descripción se enviará a los personajes de IA para que sepan quién eres y cómo tratarte. ¡Crea tu propio personaje!' 
-                : 'This description will be sent to AI characters so they know who you are and how to treat you. Create your own persona!'}
-            </p>
-            <Textarea 
-              value={persona}
-              onChange={(e) => setPersona(e.target.value)}
-              placeholder={language === 'es' ? 'Ej: Soy un valiente caballero de la mesa redonda...' : 'Ex: I am a brave knight of the round table...'}
-              className="bg-zinc-950 border-[var(--brand)]/20 focus-visible:ring-[var(--brand)] min-h-[120px] resize-none"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {personas.map((p) => (
+                <div key={p.id} className={cn("p-4 rounded-xl border flex flex-col gap-2", activePersonaId === p.id ? "bg-[var(--brand)]/10 border-[var(--brand)]" : "bg-zinc-950 border-zinc-800")}>
+                  {editingPersonaId === p.id ? (
+                    <div className="flex flex-col gap-2">
+                      <Input 
+                        value={editingPersonaData.name}
+                        onChange={(e) => setEditingPersonaData({ ...editingPersonaData, name: e.target.value })}
+                        placeholder={language === 'es' ? 'Nombre' : 'Name'}
+                        className="bg-zinc-900 border-zinc-700 h-8 text-sm"
+                      />
+                      <Textarea 
+                        value={editingPersonaData.description}
+                        onChange={(e) => setEditingPersonaData({ ...editingPersonaData, description: e.target.value })}
+                        placeholder={language === 'es' ? 'Descripción' : 'Description'}
+                        className="bg-zinc-900 border-zinc-700 min-h-[80px] text-sm resize-none"
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" className="flex-1 bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" onClick={() => {
+                          setPersonas(personas.map(persona => persona.id === p.id ? { ...persona, name: editingPersonaData.name, description: editingPersonaData.description } : persona));
+                          setEditingPersonaId(null);
+                        }}>
+                          {language === 'es' ? 'Guardar' : 'Save'}
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingPersonaId(null)}>
+                          {language === 'es' ? 'Cancelar' : 'Cancel'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-zinc-100">{p.name}</h4>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setEditingPersonaData({ name: p.name, description: p.description });
+                            setEditingPersonaId(p.id);
+                          }}>
+                            <Pencil className="w-4 h-4 text-zinc-400" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setPersonas(personas.filter(persona => persona.id !== p.id));
+                            if (activePersonaId === p.id) setActivePersonaId('');
+                          }}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-zinc-400 mt-2 line-clamp-2">{p.description}</p>
+                      <Button 
+                        variant={activePersonaId === p.id ? "default" : "outline"} 
+                        size="sm" 
+                        className={cn("mt-2 w-full", activePersonaId === p.id && "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90")} 
+                        onClick={() => setActivePersonaId(p.id)}
+                      >
+                        {activePersonaId === p.id ? (language === 'es' ? 'Activa' : 'Active') : (language === 'es' ? 'Seleccionar' : 'Select')}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              <Button variant="outline" className="h-full min-h-[100px]" onClick={() => {
+                const newPersona = { id: Date.now().toString(), name: language === 'es' ? 'Nueva Persona' : 'New Persona', description: '' };
+                setPersonas([...personas, newPersona]);
+              }}>
+                <Plus className="w-6 h-6 mr-2" />
+                {language === 'es' ? 'Añadir Persona' : 'Add Persona'}
+              </Button>
+            </div>
           </div>
 
           <div className="pt-4 flex justify-end">
@@ -165,7 +231,7 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
               className="bg-[var(--brand)] hover:opacity-90 text-black gap-2 px-8 rounded-full"
             >
               <Save className="w-4 h-4" />
-              {isSaving ? (language === 'es' ? 'Guardando...' : 'Saving...') : (language === 'es' ? 'Guardar Perfil' : 'Save Profile')}
+              {isSaving ? (language === 'es' ? 'Guardando...' : 'Saving...') : isSaved ? (language === 'es' ? '¡Guardado!' : 'Saved!') : (language === 'es' ? 'Guardar Perfil' : 'Save Profile')}
             </Button>
           </div>
         </motion.div>

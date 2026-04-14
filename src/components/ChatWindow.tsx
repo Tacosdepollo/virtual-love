@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Message, Personality, Language } from "../types";
+import { Message, Personality, Language, UserPersona } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
@@ -24,6 +24,9 @@ interface ChatWindowProps {
   onRegenerateMessage?: (messageId: string) => void;
   onConfigureCharacter?: () => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  personas?: UserPersona[];
+  activePersonaId?: string;
+  onSetActivePersona?: (personaId: string) => void;
 }
 
 export default function ChatWindow({ 
@@ -37,7 +40,10 @@ export default function ChatWindow({
   onEditMessage,
   onRegenerateMessage,
   onConfigureCharacter,
-  showToast
+  showToast,
+  personas = [],
+  activePersonaId,
+  onSetActivePersona
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -152,6 +158,17 @@ export default function ChatWindow({
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               {t('online', language)}
             </p>
+            {personas.length > 0 && onSetActivePersona && (
+              <select 
+                value={activePersonaId} 
+                onChange={(e) => onSetActivePersona(e.target.value)}
+                className="bg-zinc-950 text-zinc-400 text-[10px] rounded-md p-0.5 border border-zinc-800 mt-1"
+              >
+                {personas.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 

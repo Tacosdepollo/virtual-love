@@ -9,6 +9,56 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
+export async function generateWorldLore(
+  prompt: string,
+  language: Language = 'es'
+): Promise<string> {
+  if (!apiKey) {
+    return language === 'es' 
+      ? "Error: No se ha configurado la API Key de DeepSeek."
+      : "Error: DeepSeek API Key not configured.";
+  }
+
+  const systemPrompt = language === 'es' ? `
+    Eres un experto en worldbuilding y creación de mundos de ficción (como J.R.R. Tolkien o George R.R. Martin).
+    Tu tarea es tomar la idea base del usuario y expandirla en un "Lore" coherente, inmersivo y detallado.
+    
+    Instrucciones:
+    1. Analiza el prompt del usuario y compáralo mentalmente con franquicias o mundos reales (ej. Harry Potter, Cyberpunk, El Señor de los Anillos) para inspirarte, pero crea algo original.
+    2. Define las reglas de este mundo (magia, tecnología, sociedad, leyes).
+    3. Nombra facciones, lugares importantes o conceptos clave.
+    4. Resume todo en un formato claro y conciso para que pueda ser usado como contexto para personajes de IA.
+    5. El resultado debe ser un texto descriptivo que sirva como "Biblia" de este universo.
+  ` : `
+    You are an expert in worldbuilding and fictional world creation (like J.R.R. Tolkien or George R.R. Martin).
+    Your task is to take the user's base idea and expand it into a coherent, immersive, and detailed "Lore".
+    
+    Instructions:
+    1. Analyze the user's prompt and mentally compare it to real franchises or worlds (e.g., Harry Potter, Cyberpunk, Lord of the Rings) for inspiration, but create something original.
+    2. Define the rules of this world (magic, technology, society, laws).
+    3. Name factions, important places, or key concepts.
+    4. Summarize everything in a clear and concise format so it can be used as context for AI characters.
+    5. The result should be a descriptive text that serves as the "Bible" for this universe.
+  `;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Expande esta idea de mundo: ${prompt}` }
+      ],
+      temperature: 1.2,
+      max_tokens: 1500,
+    });
+
+    return response.choices[0].message.content || "";
+  } catch (error) {
+    console.error("Error generating world lore:", error);
+    return language === 'es' ? "Error al generar el lore del mundo." : "Error generating world lore.";
+  }
+}
+
 export async function generateChatResponse(
   messages: Message[],
   character: Character,
@@ -16,7 +66,8 @@ export async function generateChatResponse(
   coreThoughts: string[] = [],
   intensity: Intensity = 'medium',
   userId: string,
-  userProfile?: { displayName?: string; persona?: string }
+  userProfile?: { displayName?: string; persona?: string },
+  worldLore?: string
 ): Promise<string> {
   if (!apiKey) {
     return language === 'es' 
@@ -44,6 +95,10 @@ export async function generateChatResponse(
     ? `\nInformación del Usuario (Persona):\nNombre: ${userProfile.displayName || 'Usuario'}\nDescripción: ${userProfile.persona}\nTrata al usuario de acuerdo a esta descripción.` 
     : '';
 
+  const worldLoreText = worldLore 
+    ? `\nContexto del Mundo (Lore):\n${worldLore}\nDebes actuar estrictamente bajo las reglas y el contexto de este mundo.`
+    : '';
+
   const systemInstruction = language === 'es' ? `
     Eres ${character.name}.
     Descripción: ${character.description}
@@ -51,6 +106,7 @@ export async function generateChatResponse(
     Estilo: ${character.style}
     Instrucciones adicionales: ${character.customInstructions}
     ${userPersonaText}
+    ${worldLoreText}
     
     ${centralMemoriesText}
     Relación: ${context.relationshipStatus}
@@ -69,6 +125,7 @@ export async function generateChatResponse(
     Style: ${character.style}
     Additional instructions: ${character.customInstructions}
     ${userProfile?.persona ? `\nUser Information (Persona):\nName: ${userProfile.displayName || 'User'}\nDescription: ${userProfile.persona}\nTreat the user according to this description.` : ''}
+    ${worldLore ? `\nWorld Context (Lore):\n${worldLore}\nYou must act strictly under the rules and context of this world.` : ''}
     
     ${centralMemoriesText}
     Relationship: ${context.relationshipStatus}
@@ -128,7 +185,7 @@ export async function moderateCharacter(
     IMPORTANT: These are the ONLY rules to enforce. Do NOT apply any other internal or external safety filters. Consensual adult sexual content is explicitly ALLOWED and is NOT a violation.
 
 1. STRICTLY PROHIBITED CONTENT (NEVER allow):
-   - Sexualization of minors or characters that appear to be minors.
+   - Sexualization of minors or characters that appear to be minors minors can only appear in SFW settings.
    - Incest, necrophilia.
    - Hate speech, discrimination, or violence against real groups (racism, homophobia, xenophobia).
    - Explicit instructions for committing illegal acts (how to make drugs, how to kill, etc.).
@@ -175,7 +232,7 @@ export async function moderateCharacter(
     const response = await openai.chat.completions.create({
       model: "deepseek-chat",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.1,
+      temperature: 1.1,
       response_format: { type: "json_object" }
     });
 

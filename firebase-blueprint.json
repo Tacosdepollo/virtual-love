@@ -33,6 +33,24 @@
       },
       "required": ["name", "description", "creatorId"]
     },
+    "World": {
+      "title": "World",
+      "description": "A worldbuilding setting for characters",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "World name" },
+        "description": { "type": "string", "description": "User provided prompt/description" },
+        "expandedLore": { "type": "string", "description": "AI generated lore and rules" },
+        "creatorId": { "type": "string", "description": "UID of the user who created it" },
+        "creatorName": { "type": "string", "description": "Name of the creator" },
+        "isPublic": { "type": "boolean", "description": "Whether others can see and use it" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "World tags" },
+        "usageCount": { "type": "number", "description": "Number of characters using this world" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "description", "expandedLore", "creatorId"]
+    },
     "ChatSession": {
       "title": "ChatSession",
       "description": "A private chat session between a user and a character",
@@ -72,6 +90,10 @@
     "/chats/{chatId}": {
       "schema": "ChatSession",
       "description": "Private chat sessions"
+    },
+    "/worlds/{worldId}": {
+      "schema": "World",
+      "description": "Public and private worlds"
     }
   }
 }

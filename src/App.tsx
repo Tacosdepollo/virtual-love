@@ -224,6 +224,14 @@ export default function App() {
     audioManager.play('typing', 0.2);
 
     try {
+      let worldLore = undefined;
+      if (activeCharacter.worldId) {
+        const worldDoc = await getDoc(doc(db, "worlds", activeCharacter.worldId));
+        if (worldDoc.exists()) {
+          worldLore = worldDoc.data().expandedLore;
+        }
+      }
+
       const aiResponseContent = await generateChatResponse(
         updatedMessages,
         activeCharacter,
@@ -231,7 +239,8 @@ export default function App() {
         currentSession.coreThoughts || [],
         intensity,
         user.uid,
-        userStats.profile
+        userStats.profile,
+        worldLore
       );
 
       const aiMessage: Message = {
@@ -310,6 +319,14 @@ export default function App() {
     audioManager.play('typing', 0.2);
 
     try {
+      let worldLore = undefined;
+      if (activeCharacter.worldId) {
+        const worldDoc = await getDoc(doc(db, "worlds", activeCharacter.worldId));
+        if (worldDoc.exists()) {
+          worldLore = worldDoc.data().expandedLore;
+        }
+      }
+
       const aiResponseContent = await generateChatResponse(
         messagesUpTo,
         activeCharacter,
@@ -317,7 +334,8 @@ export default function App() {
         currentSession.coreThoughts || [],
         intensity,
         user.uid,
-        userStats.profile
+        userStats.profile,
+        worldLore
       );
 
       const updatedMessages = currentSession.messages.map(msg => 
@@ -822,8 +840,11 @@ export default function App() {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-zinc-800/30 bg-zinc-950/20 backdrop-blur-xl z-10">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(true)}>
+              <Button variant="ghost" size="icon" className="md:hidden relative" onClick={() => setIsSidebarOpen(true)}>
                 <Menu className="w-6 h-6" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+                )}
               </Button>
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
                 audioManager.play('click');
@@ -838,18 +859,6 @@ export default function App() {
               <div className={cn("flex items-center gap-0 sm:gap-2", view === 'chat' && "hidden md:flex")}>
                 <Button 
                   variant="ghost" 
-                  className={cn("gap-2 rounded-full", view === 'create' && "text-[var(--brand)] bg-[var(--brand)]/10")}
-                  onClick={() => {
-                    audioManager.play('click');
-                    setView('create');
-                  }}
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">{language === 'es' ? 'Crear' : 'Create'}</span>
-                </Button>
-
-                <Button 
-                  variant="ghost" 
                   className={cn("gap-2 rounded-full", view === 'explore' && "text-[var(--brand)] bg-[var(--brand)]/10")}
                   onClick={() => {
                     audioManager.play('click');
@@ -857,7 +866,7 @@ export default function App() {
                   }}
                 >
                   <Compass className="w-4 h-4" />
-                  <span className="hidden sm:inline">{t('search', language)}</span>
+                  <span className="hidden sm:inline">{language === 'es' ? 'Explorar' : 'Explore'}</span>
                 </Button>
 
                 <Button 
@@ -1015,7 +1024,11 @@ export default function App() {
                     };
                     setUserStats(newStats);
                     await updateDoc(doc(db, "users", user.uid), { stats: newStats });
-                    await setDoc(doc(db, "public_profiles", user.uid), profile);
+                    await setDoc(doc(db, "public_profiles", user.uid), {
+                      displayName: profile.displayName,
+                      avatarUrl: profile.avatarUrl,
+                      bio: profile.bio
+                    }, { merge: true });
                   }}
                 />
               </motion.div>
@@ -1036,6 +1049,16 @@ export default function App() {
                   isCreator={!activeCharacter || activeCharacter.creatorId === user?.uid || isAdmin}
                   onBack={() => setView('explore')}
                   showToast={showToast}
+                  userStats={userStats}
+                  onDeductCoins={async (amount) => {
+                    if (!user) return;
+                    const newStats = {
+                      ...userStats,
+                      coins: Math.max(0, userStats.coins - amount)
+                    };
+                    setUserStats(newStats);
+                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+                  }}
                 />
               </motion.div>
             ) : view === 'legal' ? (
@@ -1072,6 +1095,20 @@ export default function App() {
                     onRegenerateMessage={handleRegenerateMessage}
                     onConfigureCharacter={(activeCharacter.creatorId === user?.uid || isAdmin) ? () => setView('create') : undefined}
                     showToast={showToast}
+                    personas={userStats.profile?.personas}
+                    activePersonaId={userStats.profile?.activePersonaId}
+                    onSetActivePersona={async (personaId) => {
+                      if (!user) return;
+                      const newStats = {
+                        ...userStats,
+                        profile: {
+                          ...userStats.profile,
+                          activePersonaId: personaId
+                        }
+                      };
+                      setUserStats(newStats);
+                      await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+                    }}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
