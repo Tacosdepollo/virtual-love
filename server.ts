@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // PayPal Helper Functions
-const PAYPAL_API = process.env.NODE_ENV === 'production' 
+const PAYPAL_API = process.env.PAYPAL_ENVIRONMENT === 'production' 
   ? 'https://api-m.paypal.com' 
   : 'https://api-m.sandbox.paypal.com';
 
@@ -25,6 +25,9 @@ async function getPayPalAccessToken() {
     },
   });
   const data = await response.json() as any;
+  if (!data.access_token) {
+    throw new Error(`Failed to get PayPal access token: ${JSON.stringify(data)}`);
+  }
   return data.access_token;
 }
 
@@ -38,6 +41,9 @@ async function startServer() {
   app.post("/api/paypal/create-order", async (req, res) => {
     const { amount, description } = req.body;
     try {
+      if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
+        throw new Error("PayPal credentials are not configured on the server.");
+      }
       const accessToken = await getPayPalAccessToken();
       const response = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
         method: 'POST',
@@ -69,6 +75,9 @@ async function startServer() {
   app.post("/api/paypal/capture-order", async (req, res) => {
     const { orderID, userId } = req.body;
     try {
+      if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
+        throw new Error("PayPal credentials are not configured on the server.");
+      }
       const accessToken = await getPayPalAccessToken();
       const response = await fetch(`${PAYPAL_API}/v2/checkout/orders/${orderID}/capture`, {
         method: 'POST',

@@ -160,10 +160,11 @@ export default function ChatWindow({
             </p>
             {personas.length > 0 && onSetActivePersona && (
               <select 
-                value={activePersonaId} 
+                value={activePersonaId || ""} 
                 onChange={(e) => onSetActivePersona(e.target.value)}
                 className="bg-zinc-950 text-zinc-400 text-[10px] rounded-md p-0.5 border border-zinc-800 mt-1"
               >
+                <option value="">{language === 'es' ? 'Sin persona' : 'No persona'}</option>
                 {personas.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}

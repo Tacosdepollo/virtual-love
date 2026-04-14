@@ -265,6 +265,9 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
                           headers: { "Content-Type": "application/json" },
                         });
                         const order = await response.json();
+                        if (!order.id) {
+                          throw new Error(order.error || "Failed to create PayPal order");
+                        }
                         return order.id;
                       }}
                       onApprove={async (data) => {
@@ -368,6 +371,9 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
                       }),
                     });
                     const order = await response.json();
+                    if (!order.id) {
+                      throw new Error(order.error || "Failed to create PayPal order");
+                    }
                     return order.id;
                   }}
                   onApprove={async (data) => {

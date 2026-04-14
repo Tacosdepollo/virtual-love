@@ -64,6 +64,12 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.creatorId) || isAdmin();
     }
 
+    // Perfiles públicos
+    match /public_profiles/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+
     // Denegar todo lo demás
     match /{document=**} {
       allow read, write: if false;

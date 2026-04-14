@@ -763,7 +763,8 @@ export default function App() {
     <PayPalScriptProvider options={{ 
       clientId: (import.meta as any).env.VITE_PAYPAL_CLIENT_ID || "test",
       currency: "USD",
-      intent: "capture"
+      intent: "capture",
+      components: "buttons"
     }}>
       <ErrorBoundary>
         <div 
