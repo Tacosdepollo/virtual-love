@@ -80,7 +80,6 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           const privateQuery = query(
             collection(db, "worlds"),
             where("creatorId", "==", auth.currentUser.uid),
-            where("isPublic", "==", false),
             limit(100)
           );
 
@@ -90,7 +89,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           ]);
 
           const publicWorlds = publicSnapshot.docs.map(doc => doc.data() as World);
-          const privateWorlds = privateSnapshot.docs.map(doc => doc.data() as World);
+          const privateWorlds = privateSnapshot.docs.map(doc => doc.data() as World).filter(w => !w.isPublic);
           
           const allWorlds = [...publicWorlds, ...privateWorlds];
           // Deduplicate
@@ -140,8 +139,6 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
             </p>
           </div>
         </div>
-
-        <AdSenseFluid />
 
         <div className="flex gap-4 border-b border-zinc-800 pb-2">
           <button
@@ -225,15 +222,19 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
         )}
         
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="h-64 bg-zinc-900/50 rounded-2xl animate-pulse border border-zinc-800" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+              <div key={i} className="aspect-[4/5] bg-zinc-900/50 rounded-2xl animate-pulse border border-zinc-800" />
             ))}
           </div>
         ) : mode === 'characters' ? (
           <div className="space-y-12">
-            {categories.filter(c => selectedCategory === 'All' || c === selectedCategory).map(category => {
-              const categoryChars = groupedCharacters[category].filter(char => {
+            {(() => {
+              let charsToRender = selectedCategory === 'All' 
+                ? characters 
+                : groupedCharacters[selectedCategory] || [];
+                
+              charsToRender = charsToRender.filter(char => {
                 const matchesSearch = char.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                      char.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                      char.traits.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -242,16 +243,31 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                 return matchesSearch && matchesNSFW;
               });
 
-              if (categoryChars.length === 0) return null;
+              if (charsToRender.length === 0) {
+                 return (
+                   <div className="text-center py-12 text-zinc-500">
+                     {language === 'es' ? 'No se encontraron personajes.' : 'No characters found.'}
+                   </div>
+                 );
+              }
 
               return (
-                <div key={category} className="space-y-4">
-                  {selectedCategory === 'All' && (
-                    <h2 className="text-2xl font-bold font-heading text-zinc-100 capitalize">{category}</h2>
+                <div className="space-y-4">
+                  {selectedCategory !== 'All' && (
+                    <h2 className="text-2xl font-bold font-heading text-zinc-100 capitalize">{selectedCategory}</h2>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {categoryChars.map((char, idx) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+                    {charsToRender.map((char, idx) => (
                       <React.Fragment key={char.id}>
+                        {idx > 0 && idx % 7 === 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="relative group col-span-1"
+                          >
+                            <AdSenseFluid />
+                          </motion.div>
+                        )}
                         <motion.div
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -272,57 +288,51 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                               <ShieldAlert className="w-4 h-4" />
                             </Button>
                           )}
-                          <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => setSelectedCharacter(char)}>
-                            <CardHeader className="pb-2">
-                              <div className="flex items-start justify-between">
-                                <Avatar className="w-16 h-16 border-2 border-[var(--brand)]/20 group-hover:border-[var(--brand)]/50 transition-colors">
-                                  <AvatarImage src={char.avatarUrl} referrerPolicy="no-referrer" />
-                                  <AvatarFallback className="bg-zinc-800 text-2xl font-bold text-[var(--brand)]">
-                                    {char.name[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col items-end gap-2">
-                                  <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-full">
-                                    <MessageSquare className="w-3 h-3" />
-                                    {char.chatCount || 0}
-                                  </div>
-                                  {char.isNSFW && (
-                                    <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-5 bg-red-500/20 text-red-400 border-red-500/30">
-                                      NSFW
-                                    </Badge>
-                                  )}
+                          <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl group" onClick={() => setSelectedCharacter(char)}>
+                            <div className="relative w-full aspect-square overflow-hidden rounded-t-2xl bg-zinc-800">
+                              {char.avatarUrl ? (
+                                <img src={char.avatarUrl} alt={char.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-6xl font-bold text-[var(--brand)] bg-zinc-800">
+                                  {char.name[0]}
                                 </div>
+                              )}
+                              <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                                <div className="flex items-center gap-1 text-xs font-medium text-zinc-300 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 shadow-xl">
+                                  <MessageSquare className="w-3 h-3" />
+                                  {char.chatCount || 0}
+                                </div>
+                                {char.isNSFW && (
+                                  <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-5 bg-red-500/80 backdrop-blur-md text-white border-0 shadow-xl">
+                                    NSFW
+                                  </Badge>
+                                )}
                               </div>
-                              <CardTitle className="text-xl font-bold font-heading mt-4 text-zinc-100 group-hover:text-[var(--brand)] transition-colors">
+                            </div>
+                            <CardHeader className="pt-4 pb-0">
+                              <CardTitle className="text-xl font-bold font-heading text-zinc-100 group-hover:text-[var(--brand)] transition-colors line-clamp-1">
                                 {char.name}
                               </CardTitle>
-                              <CardDescription className="line-clamp-2 text-zinc-400 text-sm">
+                              <CardDescription className="line-clamp-2 text-zinc-400 text-sm mt-1">
                                 {char.description}
                               </CardDescription>
                             </CardHeader>
-                            <CardContent className="flex-1">
-                              <div className="flex flex-wrap gap-1.5 mt-2">
-                                {char.traits.slice(0, 3).map(trait => (
-                                  <span key={trait} className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-md">
-                                    {trait}
-                                  </span>
-                                ))}
-                              </div>
+                            <CardContent className="flex-1 pb-2">
                             </CardContent>
-                            <CardFooter className="pt-0 pb-4 flex items-center justify-between border-t border-zinc-800/50 mt-4">
+                            <CardFooter className="pt-0 pb-4 flex items-center justify-between mt-auto px-4">
                               <div 
-                                className="flex items-center gap-2 text-xs text-[var(--brand)] hover:opacity-80 cursor-pointer transition-opacity"
+                                className="flex items-center gap-2 text-xs text-zinc-500 hover:text-[var(--brand)] cursor-pointer transition-colors"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedCreatorId(char.creatorId);
                                 }}
                               >
-                                <User className="w-3 h-3" />
-                                {char.creatorName}
+                                <User className="w-3.5 h-3.5" />
+                                <span className="line-clamp-1 max-w-[120px]">{char.creatorName}</span>
                               </div>
-                              <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1">
+                              <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1 h-8 px-2">
                                 {language === 'es' ? 'Ver' : 'View'}
-                                <Sparkles className="w-3 h-3" />
+                                <Sparkles className="w-3.5 h-3.5" />
                               </Button>
                             </CardFooter>
                           </Card>
@@ -332,70 +342,58 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                   </div>
                 </div>
               );
-            })}
+            })()}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
             {worlds.filter(w => w.name.toLowerCase().includes(searchQuery.toLowerCase()) || w.description.toLowerCase().includes(searchQuery.toLowerCase())).map((world, idx) => (
-              <motion.div
-                key={world.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => setSelectedWorld(world)}>
-                  {world.bannerUrl && (
-                    <div className="h-32 w-full overflow-hidden">
-                      <img src={world.bannerUrl} alt={world.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    </div>
-                  )}
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
-                          <Globe className="w-5 h-5 text-[var(--brand)]" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg font-bold text-zinc-100 line-clamp-1">{world.name}</CardTitle>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setSelectedCreatorId(world.creatorId); }}
-                            className="text-xs text-zinc-500 hover:text-[var(--brand)] transition-colors text-left"
-                          >
-                            by {world.creatorName}
-                          </button>
+              <React.Fragment key={world.id}>
+                {idx > 0 && idx % 7 === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative group col-span-1"
+                  >
+                    <AdSenseFluid />
+                  </motion.div>
+                )}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                >
+                  <Card className="bg-zinc-900/20 backdrop-blur-sm border-zinc-800/50 hover:border-[var(--brand)]/50 transition-all cursor-pointer h-full flex flex-col overflow-hidden rounded-2xl" onClick={() => setSelectedWorld(world)}>
+                    {world.bannerUrl && (
+                      <div className="h-32 w-full overflow-hidden rounded-t-2xl shrink-0">
+                        <img src={world.bannerUrl} alt={world.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+                    <CardHeader className="pt-4 pb-0">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 shrink-0 rounded-xl bg-zinc-800 flex items-center justify-center">
+                            <Globe className="w-4 h-4 text-[var(--brand)]" />
+                          </div>
+                          <div className="min-w-0">
+                            <CardTitle className="text-base font-bold text-zinc-100 line-clamp-1">{world.name}</CardTitle>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 pb-2">
-                    <CardDescription className="text-zinc-400 line-clamp-3 text-sm">
-                      {world.description}
-                    </CardDescription>
-                    <div className="flex flex-wrap gap-1 mt-3">
-                      {world.tags?.slice(0, 3).map(tag => (
-                        <Badge key={tag} variant="outline" className="text-[10px] bg-zinc-900/50 border-zinc-800 text-zinc-400">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-2 border-t border-zinc-800/30 flex justify-between items-center bg-zinc-900/10">
-                    <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                      <User className="w-3.5 h-3.5" />
-                      {world.usageCount || 0}
-                    </div>
-                    <Button variant="ghost" size="sm" className="text-[var(--brand)] hover:bg-[var(--brand)]/10 gap-1">
-                      {language === 'es' ? 'Ver Lore' : 'View Lore'}
-                      <Sparkles className="w-3 h-3" />
-                    </Button>
-                    {auth.currentUser?.uid === world.creatorId && (
-                      <Button variant="ghost" size="sm" className="text-zinc-400 hover:bg-zinc-800 gap-1" onClick={(e) => { e.stopPropagation(); setEditingWorld(world); }}>
-                        {language === 'es' ? 'Editar' : 'Edit'}
-                      </Button>
-                    )}
-                  </CardFooter>
-                </Card>
-              </motion.div>
+                    </CardHeader>
+                    <CardContent className="flex-1 pb-2">
+                      <CardDescription className="text-zinc-400 line-clamp-2 text-xs mt-1">
+                        {world.description}
+                      </CardDescription>
+                    </CardContent>
+                    <CardFooter className="pt-0 pb-3 border-t border-zinc-800/30 flex justify-between items-center bg-zinc-900/10 mt-auto px-4">
+                      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                        <User className="w-3.5 h-3.5" />
+                        <span className="line-clamp-1 max-w-[80px]">{world.creatorName}</span>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+              </React.Fragment>
             ))}
           </div>
         )}

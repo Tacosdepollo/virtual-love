@@ -295,9 +295,8 @@ export default function CreateCharacterView({
                           if (val === "") {
                             setEdited({ ...edited, worldId: undefined, worldName: undefined } as any);
                           } else {
-                            // We need to find the world name. For now, just set the ID.
-                            // The actual name fetching could be done here or we can just pass the ID.
-                            setEdited({ ...edited, worldId: val } as any);
+                            const selectedWorldObj = availableWorlds.find(w => w.id === val);
+                            setEdited({ ...edited, worldId: val, worldName: selectedWorldObj ? selectedWorldObj.name : undefined } as any);
                           }
                         }}
                         className="w-full bg-zinc-950 border border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl text-zinc-100 px-3"

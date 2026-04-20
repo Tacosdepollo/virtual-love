@@ -171,9 +171,11 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
                         className="bg-zinc-900 border-zinc-700 min-h-[80px] text-sm resize-none"
                       />
                       <div className="flex gap-2 mt-2">
-                        <Button size="sm" className="flex-1 bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" onClick={() => {
-                          setPersonas(personas.map(persona => persona.id === p.id ? { ...persona, name: editingPersonaData.name, description: editingPersonaData.description } : persona));
+                        <Button size="sm" className="flex-1 bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90" onClick={async () => {
+                          const newPersonas = personas.map(persona => persona.id === p.id ? { ...persona, name: editingPersonaData.name, description: editingPersonaData.description } : persona);
+                          setPersonas(newPersonas);
                           setEditingPersonaId(null);
+                          await onSaveProfile({ displayName, avatarUrl, bio, personas: newPersonas, activePersonaId });
                         }}>
                           {language === 'es' ? 'Guardar' : 'Save'}
                         </Button>
@@ -193,9 +195,12 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
                           }}>
                             <Pencil className="w-4 h-4 text-zinc-400" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            setPersonas(personas.filter(persona => persona.id !== p.id));
-                            if (activePersonaId === p.id) setActivePersonaId('');
+                          <Button variant="ghost" size="icon" onClick={async () => {
+                            const newPersonas = personas.filter(persona => persona.id !== p.id);
+                            const newActiveId = activePersonaId === p.id ? '' : activePersonaId;
+                            setPersonas(newPersonas);
+                            setActivePersonaId(newActiveId);
+                            await onSaveProfile({ displayName, avatarUrl, bio, personas: newPersonas, activePersonaId: newActiveId });
                           }}>
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
@@ -206,7 +211,10 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
                         variant={activePersonaId === p.id ? "default" : "outline"} 
                         size="sm" 
                         className={cn("mt-2 w-full", activePersonaId === p.id && "bg-[var(--brand)] text-black hover:bg-[var(--brand)]/90")} 
-                        onClick={() => setActivePersonaId(p.id)}
+                        onClick={async () => {
+                          setActivePersonaId(p.id);
+                          await onSaveProfile({ displayName, avatarUrl, bio, personas, activePersonaId: p.id });
+                        }}
                       >
                         {activePersonaId === p.id ? (language === 'es' ? 'Activa' : 'Active') : (language === 'es' ? 'Seleccionar' : 'Select')}
                       </Button>
@@ -214,9 +222,11 @@ export default function UserProfileView({ language, userStats, onSaveProfile }: 
                   )}
                 </div>
               ))}
-              <Button variant="outline" className="h-full min-h-[100px]" onClick={() => {
+              <Button variant="outline" className="h-full min-h-[100px]" onClick={async () => {
                 const newPersona = { id: Date.now().toString(), name: language === 'es' ? 'Nueva Persona' : 'New Persona', description: '' };
-                setPersonas([...personas, newPersona]);
+                const newPersonas = [...personas, newPersona];
+                setPersonas(newPersonas);
+                await onSaveProfile({ displayName, avatarUrl, bio, personas: newPersonas, activePersonaId });
               }}>
                 <Plus className="w-6 h-6 mr-2" />
                 {language === 'es' ? 'Añadir Persona' : 'Add Persona'}

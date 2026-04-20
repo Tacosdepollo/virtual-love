@@ -43,21 +43,19 @@ export default function PublicProfileDialog({ userId, creatorName, language, onC
         // Fetch Characters
         const charsQuery = query(
           collection(db, 'characters'),
-          where('creatorId', '==', userId),
-          where('isPublic', '==', true)
+          where('creatorId', '==', userId)
         );
         const charsSnap = await getDocs(charsQuery);
-        const chars = charsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Character));
+        const chars = charsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Character)).filter(c => c.isPublic);
         setCharacters(chars);
 
         // Fetch Worlds
         const worldsQuery = query(
           collection(db, 'worlds'),
-          where('creatorId', '==', userId),
-          where('isPublic', '==', true)
+          where('creatorId', '==', userId)
         );
         const worldsSnap = await getDocs(worldsQuery);
-        const worlds = worldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as World));
+        const worlds = worldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as World)).filter(w => w.isPublic);
         setWorlds(worlds);
       } catch (err) {
         console.error("Error fetching user data:", err);

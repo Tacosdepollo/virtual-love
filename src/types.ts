@@ -64,6 +64,8 @@ export interface Personality {
   avatarUrl?: string;
   isPublic: boolean;
   isNSFW: boolean;
+  worldId?: string;
+  worldName?: string;
 }
 
 export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'calma' | 'proteccion' | 'cyberpunk' | 'frutiger' | 'midnight' | 'forest' | 'sunset' | 'ocean' | 'lava' | 'neon' | 'sakura' | 'gold' | 'mint' | 'violet';

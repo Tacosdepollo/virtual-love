@@ -10,8 +10,8 @@ export default function AdSenseFluid() {
   }, []);
 
   return (
-    <div className="w-full bg-zinc-900/10 rounded-2xl overflow-hidden border border-zinc-800/30 p-4">
-      <ins className="adsbygoogle"
+    <div className="bg-zinc-900/20 backdrop-blur-sm border border-zinc-800/50 rounded-2xl overflow-hidden flex flex-col h-full items-center justify-center min-h-[200px]">
+      <ins className="adsbygoogle w-full h-full flex-1"
            style={{ display: 'block' }}
            data-ad-format="fluid"
            data-ad-layout-key="-6r+ed+2n-1e-69"

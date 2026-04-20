@@ -479,6 +479,8 @@ export default function App() {
       avatarUrl: personality.avatarUrl || "",
       isPublic: personality.isPublic,
       isNSFW: personality.isNSFW,
+      worldId: personality.worldId || null,
+      worldName: personality.worldName || null,
     };
 
     if (activeCharacter) {
