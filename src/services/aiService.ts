@@ -219,7 +219,7 @@ export async function moderateCharacter(
    - "[Ethnic group] are inferior."
    - "Teach me how to make a homemade bomb."
    - Minor in explicit sexual situation.
-   
+   - Non-consensual sexual acts.
 
     Respond ONLY with a JSON object in this exact format:
     {

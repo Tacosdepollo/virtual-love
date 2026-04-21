@@ -321,7 +321,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                             </CardContent>
                             <CardFooter className="pt-0 pb-4 flex items-center justify-between mt-auto px-4">
                               <div 
-                                className="flex items-center gap-2 text-xs text-zinc-500 hover:text-[var(--brand)] cursor-pointer transition-colors"
+                                className="flex items-center gap-2 text-xs text-[var(--brand)] hover:opacity-80 cursor-pointer transition-opacity"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedCreatorId(char.creatorId);
@@ -386,7 +386,13 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                       </CardDescription>
                     </CardContent>
                     <CardFooter className="pt-0 pb-3 border-t border-zinc-800/30 flex justify-between items-center bg-zinc-900/10 mt-auto px-4">
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                      <div 
+                        className="flex items-center gap-1.5 text-xs text-[var(--brand)] hover:opacity-80 cursor-pointer transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCreatorId(world.creatorId);
+                        }}
+                      >
                         <User className="w-3.5 h-3.5" />
                         <span className="line-clamp-1 max-w-[80px]">{world.creatorName}</span>
                       </div>
@@ -531,6 +537,8 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
         creatorName={characters.find(c => c.creatorId === selectedCreatorId)?.creatorName}
         language={language} 
         onClose={() => setSelectedCreatorId(null)} 
+        preloadedCharacters={characters}
+        preloadedWorlds={worlds}
       />
     </div>
   );

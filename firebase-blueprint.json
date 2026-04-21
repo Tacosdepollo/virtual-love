@@ -51,6 +51,16 @@
       },
       "required": ["name", "description", "expandedLore", "creatorId"]
     },
+    "PublicProfile": {
+      "title": "Public Profile",
+      "description": "Public user profile information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "bio": { "type": "string" }
+      }
+    },
     "ChatSession": {
       "title": "ChatSession",
       "description": "A private chat session between a user and a character",
@@ -94,6 +104,10 @@
     "/worlds/{worldId}": {
       "schema": "World",
       "description": "Public and private worlds"
+    },
+    "/public_profiles/{userId}": {
+      "schema": "PublicProfile",
+      "description": "Public read-only profiles"
     }
   }
 }

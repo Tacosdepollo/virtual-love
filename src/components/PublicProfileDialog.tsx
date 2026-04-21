@@ -12,9 +12,11 @@ interface PublicProfileDialogProps {
   creatorName?: string;
   language: Language;
   onClose: () => void;
+  preloadedCharacters?: Character[];
+  preloadedWorlds?: World[];
 }
 
-export default function PublicProfileDialog({ userId, creatorName, language, onClose }: PublicProfileDialogProps) {
+export default function PublicProfileDialog({ userId, creatorName, language, onClose, preloadedCharacters, preloadedWorlds }: PublicProfileDialogProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [worlds, setWorlds] = useState<World[]>([]);
@@ -28,37 +30,62 @@ export default function PublicProfileDialog({ userId, creatorName, language, onC
       setLoading(true);
       setError(false);
       try {
-        // Fetch Profile from public_profiles
-        const profileDoc = await getDoc(doc(db, 'public_profiles', userId));
-        if (profileDoc.exists()) {
-          setProfile(profileDoc.data() as UserProfile);
-        } else {
-          setProfile({
-            displayName: creatorName || 'Usuario Anónimo',
-            avatarUrl: '',
-            bio: language === 'es' ? 'Este usuario aún no ha escrito una biografía.' : 'This user has not written a bio yet.',
-          });
+        let profileData: UserProfile = {
+          displayName: creatorName || 'Usuario Anónimo',
+          avatarUrl: '',
+          bio: language === 'es' ? 'Este usuario aún no ha escrito una biografía.' : 'This user has not written a bio yet.',
+        };
+
+        try {
+          const profileDoc = await getDoc(doc(db, 'public_profiles', userId));
+          if (profileDoc.exists()) {
+            profileData = profileDoc.data() as UserProfile;
+          }
+        } catch (e: any) {
+          console.warn("Unable to fetch public_profiles, falling back to defaults.", e.message);
         }
 
-        // Fetch Characters
-        const charsQuery = query(
-          collection(db, 'characters'),
-          where('creatorId', '==', userId)
-        );
-        const charsSnap = await getDocs(charsQuery);
-        const chars = charsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Character)).filter(c => c.isPublic);
-        setCharacters(chars);
+        setProfile(profileData);
 
-        // Fetch Worlds
-        const worldsQuery = query(
-          collection(db, 'worlds'),
-          where('creatorId', '==', userId)
-        );
-        const worldsSnap = await getDocs(worldsQuery);
-        const worlds = worldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as World)).filter(w => w.isPublic);
-        setWorlds(worlds);
+        // Use preloaded arrays if available to bypass permission errors 
+        // with non-composite queries against other users' documents
+        if (preloadedCharacters) {
+          setCharacters(preloadedCharacters.filter(c => c.creatorId === userId));
+        } else {
+          try {
+            const charsQuery = query(
+              collection(db, 'characters'),
+              where('creatorId', '==', userId),
+              where('isPublic', '==', true)
+            );
+            const charsSnap = await getDocs(charsQuery);
+            const chars = charsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Character));
+            setCharacters(chars);
+          } catch (e: any) {
+            console.warn("Unable to fetch characters.", e.message);
+            setCharacters([]);
+          }
+        }
+
+        if (preloadedWorlds) {
+          setWorlds(preloadedWorlds.filter(w => w.creatorId === userId));
+        } else {
+          try {
+            const worldsQuery = query(
+              collection(db, 'worlds'),
+              where('creatorId', '==', userId),
+              where('isPublic', '==', true)
+            );
+            const worldsSnap = await getDocs(worldsQuery);
+            const worlds = worldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as World));
+            setWorlds(worlds);
+          } catch (e: any) {
+            console.warn("Unable to fetch worlds.", e.message);
+            setWorlds([]);
+          }
+        }
       } catch (err) {
-        console.error("Error fetching user data:", err);
+        console.error("Critical error in fetchData:", err);
         setError(true);
       } finally {
         setLoading(false);
