@@ -3,11 +3,13 @@ import { ShopItem, Language, UserStats } from "../types";
 import { Button } from "./ui/button";
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { Coins, Check, ShoppingBag, Play, Sparkles, Star, Calendar, Zap } from "lucide-react";
+import { Coins, Check, ShoppingBag, Play, Sparkles, Star, Calendar, Zap, CreditCard } from "lucide-react";
 import { t } from "../translations";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import RewardedAd from "./RewardedAd";
+import { billingService } from "../services/billingService";
+import GooglePlayCheckout from "./GooglePlayCheckout";
 
 interface ShopViewProps {
   language: Language;
@@ -73,6 +75,7 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
   const [showAd, setShowAd] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [activeCategory, setActiveCategory] = useState<'all' | 'theme' | 'font' | 'subscription' | 'coins'>('all');
+  const [playCheckoutItem, setPlayCheckoutItem] = useState<{ id: string; name: string; price: number } | null>(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -256,7 +259,41 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
               </CardContent>
               <CardFooter>
                 {!isSubscribed ? (
-                  <div className="w-full">
+                  <div className="w-full flex flex-col">
+                    <Button
+                      onClick={async () => {
+                        const isNativeHandled = await billingService.purchaseItem(
+                          "subscription_monthly",
+                          4.99,
+                          userId,
+                          userStats,
+                          (updatedStats) => {
+                            setStatusMessage({
+                              type: 'success',
+                              text: language === 'es' ? "¡Suscripción de Google Play activada con éxito!" : "Google Play subscription activated successfully!"
+                            });
+                          }
+                        );
+                        if (!isNativeHandled) {
+                          setPlayCheckoutItem({
+                            id: "subscription_monthly",
+                            name: "GIMS+ Suscripción Mensual",
+                            price: 4.99
+                          });
+                        }
+                      }}
+                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold h-12 rounded-xl mb-3 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10"
+                    >
+                      <span className="text-sm font-black">▶</span>
+                      {language === 'es' ? 'Pagar con Google Play' : 'Pay with Google Play'}
+                    </Button>
+
+                    <div className="flex items-center mb-3 text-zinc-500 text-[10px] uppercase tracking-widest justify-center gap-2">
+                      <div className="h-[1px] bg-zinc-800 flex-1" />
+                      <span>{language === 'es' ? 'O bien' : 'Or pay with'}</span>
+                      <div className="h-[1px] bg-zinc-800 flex-1" />
+                    </div>
+
                     <PayPalButtons
                       style={{ layout: "horizontal", height: 48, color: "gold", shape: "rect", label: "pay" }}
                       createOrder={async () => {
@@ -358,9 +395,44 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
                 </div>
                 <span className="text-sm font-medium text-zinc-500">${pkg.price.toFixed(2)} USD</span>
               </CardContent>
-              <CardFooter className="pt-2">
+              <CardFooter className="flex flex-col gap-2 pt-2">
+                <Button
+                  onClick={async () => {
+                    const isNativeHandled = await billingService.purchaseItem(
+                      pkg.id,
+                      pkg.price,
+                      userId,
+                      userStats,
+                      (updatedStats) => {
+                        onBuyCoins(pkg.coins, pkg.price);
+                        setStatusMessage({
+                          type: 'success',
+                          text: language === 'es' ? `¡Se han añadido ${pkg.coins} monedas por Google Play!` : `Added ${pkg.coins} coins via Google Play!`
+                        });
+                      }
+                    );
+                    if (!isNativeHandled) {
+                      setPlayCheckoutItem({
+                        id: pkg.id,
+                        name: pkg.name,
+                        price: pkg.price
+                      });
+                    }
+                  }}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold h-11 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/10 text-xs"
+                >
+                  <span className="text-[10px] font-black">▶</span>
+                  {language === 'es' ? 'Comprar con Google Play' : 'Buy with Google Play'}
+                </Button>
+
+                <div className="flex items-center w-full text-zinc-600 text-[9px] uppercase tracking-wider justify-center gap-1.5">
+                  <div className="h-[1px] bg-zinc-800 flex-1" />
+                  <span>{language === 'es' ? 'O bien' : 'Or'}</span>
+                  <div className="h-[1px] bg-zinc-800 flex-1" />
+                </div>
+
                 <PayPalButtons
-                  style={{ layout: "horizontal", height: 48, color: "gold", shape: "rect", label: "pay" }}
+                  style={{ layout: "horizontal", height: 38, color: "gold", shape: "rect", label: "pay" }}
                   createOrder={async () => {
                     const response = await fetch("/api/paypal/create-order", {
                       method: "POST",
@@ -473,6 +545,48 @@ export default function ShopView({ language, userStats, userId, onBuy, onBuyCoin
           );
         })}
       </div>
+
+      <AnimatePresence>
+        {playCheckoutItem && (
+          <GooglePlayCheckout
+            productId={playCheckoutItem.id}
+            productName={playCheckoutItem.name}
+            price={playCheckoutItem.price}
+            language={language}
+            onClose={() => setPlayCheckoutItem(null)}
+            onSuccess={async () => {
+              if (playCheckoutItem.id.startsWith("coins")) {
+                const amount = parseInt(playCheckoutItem.id.split("_")[1]) || 100;
+                onBuyCoins(amount, playCheckoutItem.price);
+                setStatusMessage({
+                  type: 'success',
+                  text: language === 'es' ? `¡Se han añadido ${amount} monedas a tu cuenta!` : `Added ${amount} coins to your account!`
+                });
+              } else if (playCheckoutItem.id === "subscription_monthly") {
+                if (userId) {
+                  const { doc, updateDoc } = await import("firebase/firestore");
+                  const { db } = await import("../lib/firebase");
+                  const newStats = {
+                    ...userStats,
+                    subscription: {
+                      active: true,
+                      startDate: Date.now(),
+                      lastClaimDate: 0,
+                      type: 'monthly'
+                    }
+                  };
+                  await updateDoc(doc(db, "users", userId), { stats: newStats });
+                  setStatusMessage({
+                    type: 'success',
+                    text: language === 'es' ? "¡Suscripción de Google Play activada con éxito!" : "Google Play subscription activated successfully!"
+                  });
+                }
+              }
+              setPlayCheckoutItem(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { Textarea } from "./ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
-import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle, Upload, Camera, HelpCircle, ArrowLeft, Coins, Image as ImageIcon } from "lucide-react";
+import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle, Upload, Camera, HelpCircle, ArrowLeft, Coins, Image as ImageIcon, Mic, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import CharacterCreationHelp from "./CharacterCreationHelp";
@@ -110,8 +110,8 @@ export default function CreateCharacterView({
           getDocs(privateQuery)
         ]);
 
-        const publicWorlds = publicSnapshot.docs.map(doc => doc.data() as World);
-        const privateWorlds = privateSnapshot.docs.map(doc => doc.data() as World).filter(w => !w.isPublic);
+        const publicWorlds = publicSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as World));
+        const privateWorlds = privateSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as World)).filter(w => !w.isPublic);
         
         // Combine and deduplicate just in case
         const allWorlds = [...publicWorlds, ...privateWorlds];
@@ -145,6 +145,59 @@ export default function CreateCharacterView({
 
   const handleRemoveTag = (tag: string) => {
     setEdited({ ...edited, tags: edited.tags.filter((t) => t !== tag) });
+  };
+
+  const handlePromptImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      if (showToast) {
+        showToast(selectedLanguage === 'es' ? "La imagen es demasiado grande (máx 5MB)" : "Image is too large (max 5MB)", 'error');
+      } else {
+        alert(selectedLanguage === 'es' ? "La imagen es demasiado grande (máx 5MB)" : "Image is too large (max 5MB)");
+      }
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        
+        const newPrompts = [...(edited.prompts || [])];
+        newPrompts[index].avatarUrl = dataUrl;
+        setEdited({ ...edited, prompts: newPrompts });
+        
+        setIsUploading(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,21 +373,25 @@ export default function CreateCharacterView({
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="avatarUrl" className="text-[var(--brand)] font-bold">Avatar</Label>
                     <div className="flex gap-2">
-                      <div className="relative group shrink-0">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 flex items-center justify-center">
-                          {((edited as any).avatarUrl) ? (
-                            <img 
-                              src={(edited as any).avatarUrl} 
-                              alt="Preview" 
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
+                      <div className="relative shrink-0">
+                        <label className="w-12 h-12 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 flex items-center justify-center cursor-pointer relative group block">
+                          {(edited as any).avatarUrl ? (
+                            <>
+                              <img 
+                                src={(edited as any).avatarUrl} 
+                                alt="Preview" 
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Upload className="w-4 h-4 text-white" />
+                              </div>
+                            </>
                           ) : (
-                            <Camera className="w-6 h-6 text-zinc-700" />
+                            <div className="flex flex-col items-center justify-center text-zinc-400 hover:text-zinc-200">
+                              <Camera className="w-5 h-5 text-zinc-500" />
+                            </div>
                           )}
-                        </div>
-                        <label className="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                          <Upload className="w-4 h-4 text-white" />
                           <input 
                             type="file" 
                             className="hidden" 
@@ -429,39 +486,75 @@ export default function CreateCharacterView({
                     className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] min-h-[100px] rounded-xl text-zinc-100"
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[var(--brand)] font-bold">{selectedLanguage === 'es' ? 'Prompts Adicionales' : 'Additional Prompts'}</Label>
-                  <div className="space-y-2">
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-[var(--brand)] font-bold text-base">{selectedLanguage === 'es' ? 'Personajes Adicionales para el Chat Grupal' : 'Additional Characters for Group Chat'}</Label>
+                    <span className="text-xs text-zinc-400">
+                      {selectedLanguage === 'es' 
+                        ? 'Agrega personificaciones extra. La IA simulará una conversación grupal dinámica con ellos.' 
+                        : 'Add extra personifications. The AI will simulate a dynamic group conversation with them.'}
+                    </span>
+                  </div>
+                  <div className="space-y-4">
                     {edited.prompts?.map((prompt, index) => (
-                      <div key={prompt.id} className="flex gap-2">
-                        <Input
-                          value={prompt.name}
-                          onChange={(e) => {
-                            const newPrompts = [...(edited.prompts || [])];
-                            newPrompts[index].name = e.target.value;
-                            setEdited({ ...edited, prompts: newPrompts });
-                          }}
-                          placeholder={selectedLanguage === 'es' ? "Nombre..." : "Name..."}
-                          className="bg-zinc-950 border-zinc-800 w-1/3"
-                        />
-                        <Input
-                          value={prompt.content}
-                          onChange={(e) => {
-                            const newPrompts = [...(edited.prompts || [])];
-                            newPrompts[index].content = e.target.value;
-                            setEdited({ ...edited, prompts: newPrompts });
-                          }}
-                          placeholder={selectedLanguage === 'es' ? "Prompt..." : "Prompt..."}
-                          className="bg-zinc-950 border-zinc-800 flex-1"
-                        />
+                      <div key={prompt.id} className="flex gap-3 items-start bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/80 shadow-md">
+                        <div className="relative shrink-0 mt-1">
+                          <label className="w-11 h-11 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 flex items-center justify-center cursor-pointer relative group block">
+                            {prompt.avatarUrl ? (
+                              <>
+                                <img 
+                                  src={prompt.avatarUrl} 
+                                  alt="Preview" 
+                                  className="w-full h-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <Upload className="w-4 h-4 text-white" />
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-200">
+                                <Upload className="w-4 h-4" />
+                              </div>
+                            )}
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={(e) => handlePromptImageUpload(e, index)}
+                              disabled={isUploading}
+                            />
+                          </label>
+                        </div>
+                        <div className="flex-1 flex flex-col sm:flex-row gap-3 min-w-0">
+                          <Input
+                            value={prompt.name}
+                            onChange={(e) => {
+                              const newPrompts = [...(edited.prompts || [])];
+                              newPrompts[index].name = e.target.value;
+                              setEdited({ ...edited, prompts: newPrompts });
+                            }}
+                            placeholder={selectedLanguage === 'es' ? "Nombre del personaje..." : "Character name..."}
+                            className="bg-zinc-950 border-zinc-800 w-full sm:w-[200px] h-10 text-zinc-100 rounded-xl"
+                          />
+                          <Textarea
+                            value={prompt.content}
+                            onChange={(e) => {
+                              const newPrompts = [...(edited.prompts || [])];
+                              newPrompts[index].content = e.target.value;
+                              setEdited({ ...edited, prompts: newPrompts });
+                            }}
+                            placeholder={selectedLanguage === 'es' ? "Describe su personalidad, comportamiento o prompt..." : "Describe their personality, behavior, or prompt..."}
+                            className="bg-zinc-950 border-zinc-800 flex-1 min-h-[44px] text-zinc-100 rounded-xl py-2 resize-none"
+                          />
+                        </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => {
                             setEdited({ ...edited, prompts: edited.prompts?.filter((_, i) => i !== index) });
                           }}
-                          className="text-zinc-500 hover:text-red-500"
+                          className="text-zinc-500 hover:text-red-500 shrink-0 mt-1"
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -475,12 +568,218 @@ export default function CreateCharacterView({
                           prompts: [...(edited.prompts || []), { id: Date.now().toString(), name: '', content: '' }]
                         });
                       }}
-                      className="w-full border-zinc-800 hover:bg-zinc-800"
+                      className="w-full border-zinc-800 hover:bg-zinc-800 hover:text-zinc-100 rounded-xl py-5 font-medium transition-all"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      {selectedLanguage === 'es' ? 'Añadir Prompt' : 'Add Prompt'}
+                      {selectedLanguage === 'es' ? 'Añadir Personaje Grupal Extra' : 'Add Extra Group Character'}
                     </Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-zinc-900/40 border-zinc-800/50 backdrop-blur-xl rounded-2xl overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-lg text-[var(--brand)] flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-[var(--brand)]" />
+                  {selectedLanguage === 'es' ? 'Mensaje Inicial, Contexto y Fondo' : 'Initial Message, Context & Background'}
+                </CardTitle>
+                <CardDescription className="text-zinc-400">
+                  {selectedLanguage === 'es' 
+                    ? 'Configura opciones avanzadas para mejorar la experiencia de conversación y el aspecto visual.' 
+                    : 'Configure advanced settings to improve the chat experience and visual appearance.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Initial Message */}
+                <div className="space-y-2">
+                  <Label htmlFor="initialMessage" className="text-[var(--brand)] font-bold">
+                    {selectedLanguage === 'es' ? 'Mensaje Inicial (Saludo)' : 'Initial Message (Greeting)'}
+                  </Label>
+                  <Textarea
+                    id="initialMessage"
+                    value={edited.initialMessage || ""}
+                    onChange={(e) => setEdited({ ...edited, initialMessage: e.target.value })}
+                    placeholder={selectedLanguage === 'es' 
+                      ? "Ej: ¡Hola! Soy Elena, tu compañera de hoy. ¿De qué te gustaría hablar?" 
+                      : "Ex: Hello! I'm Elena, your companion today. What would you like to talk about?"}
+                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] min-h-[80px] rounded-xl text-zinc-100"
+                  />
+                  <p className="text-[10px] text-zinc-500">
+                    {selectedLanguage === 'es'
+                      ? "Este mensaje se mostrará automáticamente al iniciar un nuevo chat."
+                      : "This message will be shown automatically when starting a new chat."}
+                  </p>
+                </div>
+
+                {/* System Context Prompt */}
+                <div className="space-y-2">
+                  <Label htmlFor="systemPrompt" className="text-[var(--brand)] font-bold">
+                    {selectedLanguage === 'es' ? 'Prompt de Contexto (Sistema)' : 'System Context Prompt'}
+                  </Label>
+                  <Textarea
+                    id="systemPrompt"
+                    value={edited.systemPrompt || ""}
+                    onChange={(e) => setEdited({ ...edited, systemPrompt: e.target.value })}
+                    placeholder={selectedLanguage === 'es'
+                      ? "Ej: La conversación se sitúa en una cafetería acogedora en París, en una tarde lluviosa. Mantén un tono misterioso pero amigable."
+                      : "Ex: The conversation takes place in a cozy coffee shop in Paris on a rainy afternoon. Keep a mysterious but friendly tone."}
+                    className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] min-h-[100px] rounded-xl text-zinc-100"
+                  />
+                  <p className="text-[10px] text-zinc-500">
+                    {selectedLanguage === 'es'
+                      ? "Define las circunstancias o la situación inicial de la conversación. Esto guía al modelo IA."
+                      : "Define the circumstances or the starting scenario for the conversation. This guides the AI model."}
+                  </p>
+                </div>
+
+                {/* Custom Background Image Option */}
+                <div className="space-y-2">
+                  <Label htmlFor="bgImageUrl" className="text-[var(--brand)] font-bold">
+                    {selectedLanguage === 'es' ? 'Fondo Personalizado (URL)' : 'Custom Background Image (URL)'}
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative shrink-0">
+                      <label className="w-12 h-12 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 flex items-center justify-center cursor-pointer relative group block">
+                        {edited.bgImageUrl ? (
+                          <>
+                            <img 
+                              src={edited.bgImageUrl} 
+                              alt="Fondo Preview" 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Upload className="w-4 h-4 text-white" />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-zinc-400 hover:text-zinc-200">
+                            <ImageIcon className="w-5 h-5 text-zinc-500" />
+                          </div>
+                        )}
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            if (file.size > 5 * 1024 * 1024) {
+                              if (showToast) {
+                                showToast(selectedLanguage === 'es' ? "La imagen es demasiado grande (máx 5MB)" : "Image is too large (max 5MB)", 'error');
+                              }
+                              return;
+                            }
+
+                            setIsUploading(true);
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const img = new Image();
+                              img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                const MAX_WIDTH = 800;
+                                const MAX_HEIGHT = 800;
+                                let width = img.width;
+                                let height = img.height;
+
+                                if (width > height) {
+                                  if (width > MAX_WIDTH) {
+                                    height *= MAX_WIDTH / width;
+                                    width = MAX_WIDTH;
+                                  }
+                                } else {
+                                  if (height > MAX_HEIGHT) {
+                                    width *= MAX_HEIGHT / height;
+                                    height = MAX_HEIGHT;
+                                  }
+                                }
+
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                ctx?.drawImage(img, 0, 0, width, height);
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                                setEdited({ ...edited, bgImageUrl: dataUrl });
+                                setIsUploading(false);
+                              };
+                              img.src = event.target?.result as string;
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                          disabled={isUploading}
+                        />
+                      </label>
+                    </div>
+                    <Input
+                      id="bgImageUrl"
+                      value={edited.bgImageUrl || ""}
+                      onChange={(e) => setEdited({ ...edited, bgImageUrl: e.target.value })}
+                      placeholder={selectedLanguage === 'es' ? "Pega una URL de imagen para el fondo de la app..." : "Paste an image URL for the app background..."}
+                      className="bg-zinc-950 border-zinc-800 focus:ring-[var(--brand)] h-12 rounded-xl flex-1 text-zinc-100 text-sm"
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-500">
+                    {selectedLanguage === 'es'
+                      ? "La imagen se aplicará de fondo a la aplicación completa cuando estés chateando con este personaje."
+                      : "The image will be set as the full app background while chatting with this character."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-zinc-900/40 border-zinc-800/50 backdrop-blur-xl rounded-2xl overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-lg text-[var(--brand)] flex items-center gap-2">
+                  <Mic className="w-5 h-5" />
+                  {t('voiceDesign', selectedLanguage)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="bg-[var(--brand)]/10 border border-[var(--brand)]/20 p-4 rounded-xl text-sm text-[var(--brand)]">
+                    {selectedLanguage === 'es' 
+                      ? 'Selecciona una de las voces inmersivas y súper rápidas impulsadas por Gemini.'
+                      : 'Select one of the immersive and super-fast voices powered by Gemini.'}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[var(--brand)] font-bold">{selectedLanguage === 'es' ? 'Voz' : 'Voice'}</Label>
+                    <div className="flex bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-[var(--brand)] focus-within:border-[var(--brand)]">
+                      <select
+                        value={edited.voiceConfig?.description || "Kore"}
+                        onChange={(e) => setEdited({
+                          ...edited,
+                          voiceConfig: { ...(edited.voiceConfig || {}), description: e.target.value }
+                        })}
+                        className="w-full bg-transparent h-12 px-3 text-zinc-100 outline-none appearance-none"
+                      >
+                        <option value="Kore">Kore ({selectedLanguage === 'es' ? 'Femenina, Suave' : 'Female, Soft'})</option>
+                        <option value="Puck">Puck ({selectedLanguage === 'es' ? 'Femenina, Enérgica' : 'Female, Energetic'})</option>
+                        <option value="Zephyr">Zephyr ({selectedLanguage === 'es' ? 'Femenina, Profunda' : 'Female, Deep'})</option>
+                        <option value="Charon">Charon ({selectedLanguage === 'es' ? 'Masculina, Grave' : 'Male, Deep'})</option>
+                        <option value="Fenrir">Fenrir ({selectedLanguage === 'es' ? 'Masculina, Rasposa' : 'Male, Raspy'})</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    className="w-full bg-[var(--brand)] hover:opacity-90 text-white rounded-xl py-6 font-bold flex items-center justify-center gap-2"
+                    onClick={async () => {
+                      const desc = edited.voiceConfig?.description || "Kore";
+                      const { playSpeech } = await import("../services/ttsService");
+                      const sampleText = selectedLanguage === 'es' 
+                        ? `Hola, mi nombre es ${edited.name || 'tu creación'}. ¿Qué te parece mi voz?`
+                        : `Hello, my name is ${edited.name || 'your creation'}. How do you like my voice?`;
+                      playSpeech(sampleText, desc, selectedLanguage);
+                    }}
+                  >
+                    <Mic className="w-5 h-5" />
+                    {t('voicePreview', selectedLanguage)}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -506,7 +805,7 @@ export default function CreateCharacterView({
                         onClick={() => setEdited({ ...edited, isPublic: isPub })}
                         className={cn(
                           "rounded-xl h-10 text-xs",
-                          edited.isPublic === isPub ? "bg-[var(--brand)]" : "border-zinc-800"
+                          edited.isPublic === isPub ? "bg-[var(--brand)] text-black" : "border-zinc-800"
                         )}
                       >
                         {isPub ? t('public', selectedLanguage) : t('private', selectedLanguage)}
@@ -528,7 +827,7 @@ export default function CreateCharacterView({
                         onClick={() => setEdited({ ...edited, isNSFW: isNsfw })}
                         className={cn(
                           "rounded-xl h-10 text-xs",
-                          edited.isNSFW === isNsfw ? "bg-[var(--brand)]" : "border-zinc-800"
+                          edited.isNSFW === isNsfw ? "bg-[var(--brand)] text-black" : "border-zinc-800"
                         )}
                       >
                         {isNsfw ? t('nsfw', selectedLanguage) : t('sfw', selectedLanguage)}
@@ -772,11 +1071,7 @@ export default function CreateCharacterView({
                       return;
                     }
 
-                    if (!userStats || userStats.coins < 100) {
-                      if (showToast) showToast(selectedLanguage === 'es' ? "No tienes suficientes monedas (100)" : "Not enough coins (100)", 'error');
-                      return;
-                    }
-
+                    // Creation is free now, no coin check or deduction needed
                     setIsGeneratingLore(true);
                     
                     try {
@@ -804,7 +1099,6 @@ export default function CreateCharacterView({
                         bannerUrl: bannerUrl
                       });
                       
-                      if (onDeductCoins) onDeductCoins(100);
                       if (showToast) showToast(selectedLanguage === 'es' ? "Mundo creado exitosamente" : "World created successfully", 'success');
                       
                       // Reset form
@@ -831,7 +1125,7 @@ export default function CreateCharacterView({
                   ) : (
                     <span className="flex items-center gap-2">
                       <Globe className="w-5 h-5" />
-                      {selectedLanguage === 'es' ? 'Crear Mundo (100 Monedas)' : 'Create World (100 Coins)'}
+                      {selectedLanguage === 'es' ? 'Crear Mundo' : 'Create World'}
                     </span>
                   )}
                 </Button>

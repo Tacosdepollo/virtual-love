@@ -15,6 +15,7 @@ import { Badge } from "./ui/badge";
 import { cn } from "../lib/utils";
 import { audioManager } from "../lib/audio";
 import AdSenseFluid from "./AdSenseFluid";
+import AdMobBanner from "./AdMobBanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import PublicProfileDialog from "./PublicProfileDialog";
 import EditWorldDialog from "./EditWorldDialog";
@@ -37,7 +38,7 @@ const MODERATION_REASONS = [
 ];
 
 export default function ExploreView({ language, onSelectCharacter, onCreateCharacter, isAdmin, onDeleteCharacter, userStats }: ExploreViewProps) {
-  const [mode, setMode] = useState<'characters' | 'worlds'>('characters');
+  const [mode, setMode] = useState<'characters' | 'worlds' | 'myCreations'>('characters');
   const [characters, setCharacters] = useState<Character[]>([]);
   const [worlds, setWorlds] = useState<World[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +67,17 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           );
           const chars = await getCachedQuery<Character>(q, "explore_public_chars", 30 * 60 * 1000);
           setCharacters(chars);
+        } else if (mode === 'myCreations') {
+          if (!auth.currentUser) return;
+          const q = query(
+            collection(db, "characters"),
+            where("creatorId", "==", auth.currentUser.uid),
+            limit(100)
+          );
+          const snapshot = await getDocs(q);
+          const chars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Character));
+          chars.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          setCharacters(chars);
         } else {
           if (!auth.currentUser) return;
           
@@ -88,8 +100,8 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
             getDocs(privateQuery)
           ]);
 
-          const publicWorlds = publicSnapshot.docs.map(doc => doc.data() as World);
-          const privateWorlds = privateSnapshot.docs.map(doc => doc.data() as World).filter(w => !w.isPublic);
+          const publicWorlds = publicSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as World));
+          const privateWorlds = privateSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as World)).filter(w => !w.isPublic);
           
           const allWorlds = [...publicWorlds, ...privateWorlds];
           // Deduplicate
@@ -159,6 +171,15 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           >
             {t('worlds', language)}
           </button>
+          <button
+            onClick={() => setMode('myCreations')}
+            className={cn(
+              "text-lg font-bold pb-2 border-b-2 transition-colors",
+              mode === 'myCreations' ? "text-[var(--brand)] border-[var(--brand)]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+            )}
+          >
+            {t('myCreations', language)}
+          </button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -193,8 +214,8 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
         </div>
 
         {/* Category Buttons */}
-        {mode === 'characters' && (
-          <div className="flex overflow-x-auto pb-2 gap-2 custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+        {(mode === 'characters' || mode === 'myCreations') && (
+          <div className="grid grid-rows-2 grid-flow-col overflow-x-auto pb-2 gap-2 custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
             <Button
               variant="ghost"
               onClick={() => setSelectedCategory('All')}
@@ -221,13 +242,18 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
           </div>
         )}
         
+        {/* AdMob Banner placement for complete monetization integration */}
+        <div className="py-2">
+          <AdMobBanner />
+        </div>
+        
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
               <div key={i} className="aspect-[4/5] bg-zinc-900/50 rounded-2xl animate-pulse border border-zinc-800" />
             ))}
           </div>
-        ) : mode === 'characters' ? (
+        ) : (mode === 'characters' || mode === 'myCreations') ? (
           <div className="space-y-12">
             {(() => {
               let charsToRender = selectedCategory === 'All' 
@@ -418,7 +444,7 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
 
         {/* Mini Profile Dialog */}
         <Dialog open={!!selectedCharacter} onOpenChange={(open) => !open && setSelectedCharacter(null)}>
-          <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-md">
+          <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold font-heading flex items-center gap-3">
                 <Avatar className="w-12 h-12">
@@ -428,8 +454,8 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                 {selectedCharacter?.name}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-zinc-400 leading-relaxed">
+            <div className="space-y-4 py-4 flex-1">
+              <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-line">
                 {selectedCharacter?.description}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -439,8 +465,31 @@ export default function ExploreView({ language, onSelectCharacter, onCreateChara
                   </Badge>
                 ))}
               </div>
+
+              {selectedCharacter?.prompts && selectedCharacter.prompts.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-zinc-800/60">
+                  <h4 className="text-xs font-bold text-[var(--brand)] uppercase tracking-wider mb-3">
+                    {language === 'es' ? 'Integrantes del Grupo' : 'Group Members'}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedCharacter.prompts.map((p) => (
+                      <div key={p.id} className="flex items-center gap-2.5 bg-zinc-900/40 p-2 rounded-xl border border-zinc-800/40 hover:border-zinc-700/50 transition-colors">
+                        <Avatar className="w-9 h-9 border border-zinc-800 shrink-0">
+                          <AvatarImage src={p.avatarUrl} referrerPolicy="no-referrer" />
+                          <AvatarFallback className="bg-amber-600/20 text-amber-400 text-xs font-bold">
+                            {p.name ? p.name[0] : '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs font-medium text-zinc-200 truncate pr-1" title={p.name}>
+                          {p.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end pt-4 mt-auto">
               <Button 
                 className="bg-[var(--brand)] hover:opacity-90 w-full rounded-full"
                 onClick={() => {

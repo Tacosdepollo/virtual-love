@@ -95,6 +95,69 @@ async function startServer() {
     }
   });
 
+  // Gemini Text-to-Speech
+  app.post("/api/tts/generate", async (req, res) => {
+    const { text, voice_description } = req.body;
+    
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY is not configured");
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      // Voice mapping based on generic descriptions or fallbacks
+      let voiceName = 'Kore'; // Default female-ish
+      if (['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'].includes(voice_description)) {
+        voiceName = voice_description;
+      } else {
+        const lowerDesc = (voice_description || "").toLowerCase();
+        if (lowerDesc.includes('masculin') || lowerDesc.includes('hombre') || lowerDesc.includes('male') || lowerDesc.includes('man') || lowerDesc.includes('charon')) {
+          voiceName = 'Charon'; // Male-ish
+        } else if (lowerDesc.includes('puck')) {
+          voiceName = 'Puck';
+        } else if (lowerDesc.includes('fenrir')) {
+          voiceName = 'Fenrir';
+        } else if (lowerDesc.includes('zephyr')) {
+          voiceName = 'Zephyr';
+        }
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: [{ parts: [{ text: text || "Hola." }] }],
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voiceName as any },
+              },
+          },
+        },
+      });
+
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!base64Audio) {
+         throw new Error("No audio returned from Gemini");
+      }
+
+      res.json({ audio: base64Audio });
+
+    } catch (error: any) {
+      console.error("TTS Generation Error:", error);
+      res.status(500).json({ error: "Failed to generate audio" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

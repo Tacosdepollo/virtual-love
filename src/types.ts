@@ -5,6 +5,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  name?: string;
 }
 
 export interface World {
@@ -28,7 +29,7 @@ export interface Character {
   traits: string[];
   style: string;
   customInstructions: string;
-  prompts?: { id: string; name: string; content: string }[];
+  prompts?: { id: string; name: string; content: string; avatarUrl?: string }[];
   creatorId: string;
   creatorName: string;
   avatarUrl?: string;
@@ -39,6 +40,21 @@ export interface Character {
   worldName?: string;
   chatCount: number;
   createdAt: any;
+  voiceConfig?: VoiceConfig;
+  initialMessage?: string;
+  systemPrompt?: string;
+  bgImageUrl?: string;
+}
+
+export interface VoiceConfig {
+  gender?: string;
+  age?: string;
+  pitch?: string;
+  pace?: string;
+  emotion?: string;
+  characteristics?: string[];
+  purpose?: string;
+  description?: string;
 }
 
 export interface ChatSession {
@@ -60,12 +76,16 @@ export interface Personality {
   style: string;
   description: string;
   customInstructions?: string;
-  prompts?: { id: string; name: string; content: string }[];
+  prompts?: { id: string; name: string; content: string; avatarUrl?: string }[];
   avatarUrl?: string;
   isPublic: boolean;
   isNSFW: boolean;
   worldId?: string;
   worldName?: string;
+  voiceConfig?: VoiceConfig;
+  initialMessage?: string;
+  systemPrompt?: string;
+  bgImageUrl?: string;
 }
 
 export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'calma' | 'proteccion' | 'cyberpunk' | 'frutiger' | 'midnight' | 'forest' | 'sunset' | 'ocean' | 'lava' | 'neon' | 'sakura' | 'gold' | 'mint' | 'violet';

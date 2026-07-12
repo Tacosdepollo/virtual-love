@@ -2,7 +2,7 @@ import React from "react";
 import { ChatSession, Language, AppNotification } from "../types";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
-import { MessageSquare, Plus, Trash2, Settings, Heart, X, User, Bell } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Settings, Heart, X, User, Bell, BookOpen, ShoppingBag } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import { audioManager } from "../lib/audio";
@@ -17,6 +17,8 @@ interface SidebarProps {
   onOpenSettings: () => void;
   onOpenLegal: () => void;
   onOpenProfile: () => void;
+  onOpenGuide: () => void;
+  onOpenShop: () => void;
   isOpen: boolean;
   onClose: () => void;
   notifications: AppNotification[];
@@ -33,6 +35,8 @@ export default function Sidebar({
   onOpenSettings,
   onOpenLegal,
   onOpenProfile,
+  onOpenGuide,
+  onOpenShop,
   isOpen,
   onClose,
   notifications,
@@ -133,6 +137,22 @@ export default function Sidebar({
             )}
           </Button>
         </div>
+         <Button
+          variant="ghost"
+          onClick={onOpenShop}
+          className="w-full justify-start gap-2 text-zinc-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10"
+        >
+          <ShoppingBag className="w-4 h-4" />
+          {t('shop', language)}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={onOpenGuide}
+          className="w-full justify-start gap-2 text-zinc-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10"
+        >
+          <BookOpen className="w-4 h-4" />
+          {language === 'es' ? 'Guía del Usuario' : 'User Guide'}
+        </Button>
         <Button
           variant="ghost"
           onClick={onOpenSettings}

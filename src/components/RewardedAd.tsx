@@ -5,6 +5,7 @@ import { t } from "../translations";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, X, Coins, Loader2, CheckCircle2, Volume2, VolumeX } from "lucide-react";
 import { audioManager } from "../lib/audio";
+import { adMobService } from "../services/adMobService";
 
 interface RewardedAdProps {
   language: Language;
@@ -18,6 +19,14 @@ export default function RewardedAd({ language, onComplete, onClose }: RewardedAd
   const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
+    if (adMobService.isCapacitor()) {
+      adMobService.showNativeRewarded((rewardAmount) => {
+        onComplete(rewardAmount || 100);
+        onClose();
+      });
+      return;
+    }
+
     // Simulate loading
     const timer = setTimeout(() => {
       setStatus('playing');
@@ -40,11 +49,25 @@ export default function RewardedAd({ language, onComplete, onClose }: RewardedAd
 
   useEffect(() => {
     if (status === 'playing') {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (e) {
-        console.error("AdSense error:", e);
-      }
+      let timeoutId = setTimeout(() => {
+        try {
+          const ads = document.getElementsByClassName("adsbygoogle");
+          let unprocessedAds = 0;
+          for (let i = 0; i < ads.length; i++) {
+            if (!ads[i].hasAttribute("data-adsbygoogle-status")) {
+              unprocessedAds++;
+            }
+          }
+          if (unprocessedAds > 0) {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          }
+        } catch (e: any) {
+          if (!e.message?.includes("already have ads")) {
+            console.warn("AdSense error:", e.message);
+          }
+        }
+      }, 250);
+      return () => clearTimeout(timeoutId);
     }
   }, [status]);
 

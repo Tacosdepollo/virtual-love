@@ -4,13 +4,14 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Send, User, Bot, Loader2, Pin, PinOff, BrainCircuit, X, Edit2, RefreshCw, CheckSquare, Square, Download, Check, Settings } from "lucide-react";
+import { Send, User, Bot, Loader2, Pin, PinOff, BrainCircuit, X, Edit2, RefreshCw, CheckSquare, Square, Download, Check, Settings, Mic, Play, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import { audioManager } from "../lib/audio";
 import Markdown from "react-markdown";
 import { toJpeg } from 'html-to-image';
+import { playSpeech } from "../services/ttsService";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -20,6 +21,7 @@ interface ChatWindowProps {
   isLoading: boolean;
   coreThoughts?: string[];
   onToggleCoreThought?: (messageId: string) => void;
+  onRestartChat?: () => void;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerateMessage?: (messageId: string) => void;
   onConfigureCharacter?: () => void;
@@ -27,6 +29,7 @@ interface ChatWindowProps {
   personas?: UserPersona[];
   activePersonaId?: string;
   onSetActivePersona?: (personaId: string) => void;
+  autoPlayVoice?: boolean;
 }
 
 export default function ChatWindow({ 
@@ -37,13 +40,15 @@ export default function ChatWindow({
   isLoading,
   coreThoughts = [],
   onToggleCoreThought,
+  onRestartChat,
   onEditMessage,
   onRegenerateMessage,
   onConfigureCharacter,
   showToast,
   personas = [],
   activePersonaId,
-  onSetActivePersona
+  onSetActivePersona,
+  autoPlayVoice = false
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,6 +61,18 @@ export default function ChatWindow({
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const exportContainerRef = useRef<HTMLDivElement>(null);
+  const lastAutoPlayedId = useRef<string | null>(null);
+
+  // Auto-play voice for new assistant messages
+  useEffect(() => {
+    if (!autoPlayVoice || !personality.voiceConfig?.description) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.role === "assistant" && lastMessage.id !== lastAutoPlayedId.current) {
+      lastAutoPlayedId.current = lastMessage.id;
+      playSpeech(lastMessage.content, personality.voiceConfig.description, language);
+    }
+  }, [messages, autoPlayVoice, personality.voiceConfig]);
 
   useEffect(() => {
     if (scrollRef.current && !editingMessageId && !isSelectMode) {
@@ -146,12 +163,36 @@ export default function ChatWindow({
       {/* Header */}
       <div className="flex p-4 border-b border-zinc-800/30 bg-zinc-900/20 items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10 border-2 border-[var(--brand)]/50">
-            <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
-            <AvatarFallback className="bg-[var(--brand)] text-white">
-              {personality.name[0]}
-            </AvatarFallback>
-          </Avatar>
+          {personality.prompts && personality.prompts.length > 0 ? (
+            <div className="flex -space-x-3 hover:-space-x-1 transition-all duration-300">
+              <Avatar className="w-10 h-10 border-2 border-zinc-950 shadow-md">
+                <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
+                <AvatarFallback className="bg-[var(--brand)] text-white">
+                  {personality.name[0]}
+                </AvatarFallback>
+              </Avatar>
+              {personality.prompts.slice(0, 3).map((p) => (
+                <Avatar key={p.id} className="w-10 h-10 border-2 border-zinc-950 shadow-md" title={p.name}>
+                  <AvatarImage src={p.avatarUrl} referrerPolicy="no-referrer" />
+                  <AvatarFallback className="bg-amber-600 text-white text-xs font-bold">
+                    {p.name[0] || '?'}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {personality.prompts.length > 3 && (
+                <div className="w-10 h-10 rounded-full border-2 border-zinc-950 bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-300 shadow-md">
+                  +{personality.prompts.length - 3}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Avatar className="w-10 h-10 border-2 border-[var(--brand)]/50">
+              <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
+              <AvatarFallback className="bg-[var(--brand)] text-white">
+                {personality.name[0]}
+              </AvatarFallback>
+            </Avatar>
+          )}
           <div>
             <h2 className="font-bold text-zinc-100 font-heading">{personality.name}</h2>
             <p className="text-xs text-[var(--brand)] flex items-center gap-1 opacity-80">
@@ -195,6 +236,18 @@ export default function ChatWindow({
             {isSelectMode ? <X className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
             <span className="hidden sm:inline">{language === 'es' ? 'Seleccionar' : 'Select'}</span>
           </Button>
+
+          {onRestartChat && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRestartChat}
+              className="rounded-full hover:bg-red-500/10 hover:text-red-500"
+              title={language === 'es' ? 'Reiniciar Conversación' : 'Restart Chat'}
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
+          )}
 
           {onConfigureCharacter && (
             <Button
@@ -295,8 +348,10 @@ export default function ChatWindow({
                       <AvatarFallback className="bg-zinc-800 text-zinc-400"><User className="w-4 h-4" /></AvatarFallback>
                     ) : (
                       <>
-                        <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
-                        <AvatarFallback className="bg-[var(--brand)] text-white">{personality.name[0]}</AvatarFallback>
+                        <AvatarImage src={msg.name && msg.name !== personality.name ? (personality.prompts?.find(p => p.name === msg.name)?.avatarUrl) : personality.avatarUrl} referrerPolicy="no-referrer" />
+                        <AvatarFallback className={cn("text-white", msg.name && msg.name !== personality.name ? "bg-amber-600" : "bg-[var(--brand)]")}>
+                          {msg.name ? msg.name[0] : (personality.name?.[0] || 'A')}
+                        </AvatarFallback>
                       </>
                     )}
                   </Avatar>
@@ -306,6 +361,11 @@ export default function ChatWindow({
                     msg.role === "user" ? "items-end" : "items-start",
                     "w-full"
                   )}>
+                    {msg.name && msg.role === "assistant" && (
+                      <div className="text-[11px] text-zinc-400 font-medium px-1">
+                        {msg.name}
+                      </div>
+                    )}
                     {editingMessageId === msg.id ? (
                       <div className="flex flex-col gap-2 w-full min-w-[250px]">
                         <textarea
@@ -376,6 +436,20 @@ export default function ChatWindow({
                             title={language === 'es' ? 'Regenerar' : 'Regenerate'}
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Play Voice (Only for AI with Voice Config) */}
+                        {msg.role === "assistant" && personality.voiceConfig?.description && (
+                          <button
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              playSpeech(msg.content, personality.voiceConfig?.description || "", language); 
+                            }}
+                            className="p-1.5 rounded-full bg-zinc-900/80 border border-zinc-700 shadow-lg hover:bg-zinc-800 text-zinc-400 hover:text-[var(--brand)]"
+                            title={language === 'es' ? 'Reproducir' : 'Play'}
+                          >
+                            <Play className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -486,8 +560,10 @@ export default function ChatWindow({
                     <AvatarFallback className="bg-zinc-800 text-zinc-400"><User className="w-5 h-5" /></AvatarFallback>
                   ) : (
                     <>
-                      <AvatarImage src={personality.avatarUrl} referrerPolicy="no-referrer" />
-                      <AvatarFallback className="bg-[var(--brand)] text-white">{personality.name[0]}</AvatarFallback>
+                      <AvatarImage src={msg.name && msg.name !== personality.name ? (personality.prompts?.find(p => p.name === msg.name)?.avatarUrl) : personality.avatarUrl} referrerPolicy="no-referrer" />
+                      <AvatarFallback className={cn("text-white", msg.name && msg.name !== personality.name ? "bg-amber-600" : "bg-[var(--brand)]")}>
+                        {msg.name ? msg.name[0] : (personality.name?.[0] || 'A')}
+                      </AvatarFallback>
                     </>
                   )}
                 </Avatar>

@@ -29,7 +29,20 @@
         "avatarUrl": { "type": "string", "description": "URL to character image" },
         "isPublic": { "type": "boolean", "description": "Whether others can see and chat with it" },
         "chatCount": { "type": "number", "description": "Total number of chats started" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "voiceConfig": {
+          "type": "object",
+          "properties": {
+            "gender": { "type": "string" },
+            "age": { "type": "string" },
+            "pitch": { "type": "string" },
+            "pace": { "type": "string" },
+            "emotion": { "type": "string" },
+            "characteristics": { "type": "array", "items": { "type": "string" } },
+            "purpose": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        }
       },
       "required": ["name", "description", "creatorId"]
     },
@@ -50,6 +63,16 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "description", "expandedLore", "creatorId"]
+    },
+    "PublicProfile": {
+      "title": "Public Profile",
+      "description": "Public user profile information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "bio": { "type": "string" }
+      }
     },
     "PublicProfile": {
       "title": "Public Profile",

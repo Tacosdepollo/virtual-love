@@ -33,6 +33,10 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    match /dummy_test/{docId} {
+      allow read: if true;
+    }
+
     // Chats
     match /chats/{chatId} {
       allow read: if isOwner(resource.data.userId) || isAdmin();

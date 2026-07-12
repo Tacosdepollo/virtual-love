@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { Message, Character, Language, Intensity } from "../types";
+import { Message, Character, Language, Intensity, UserProfile } from "../types";
 import { getFullContext } from "./memoryService";
 
 const apiKey = (import.meta as any).env.VITE_DEEPSEEK_API_KEY || "";
@@ -48,7 +48,7 @@ export async function generateWorldLore(
         { role: "system", content: systemPrompt },
         { role: "user", content: `Expande esta idea de mundo: ${prompt}` }
       ],
-      temperature: 1.2,
+      temperature: 1.0,
       max_tokens: 1500,
     });
 
@@ -66,7 +66,7 @@ export async function generateChatResponse(
   coreThoughts: string[] = [],
   intensity: Intensity = 'medium',
   userId: string,
-  userProfile?: { displayName?: string; persona?: string },
+  userProfile?: UserProfile,
   worldLore?: string
 ): Promise<string> {
   if (!apiKey) {
@@ -79,10 +79,10 @@ export async function generateChatResponse(
   const context = await getFullContext(character.id, userId);
   
   const intensityMap = {
-    low: { temp: 0.7, instruction: language === 'es' ? "Mantén la conversación tranquila." : "Keep conversation calm." },
-    medium: { temp: 1.0, instruction: language === 'es' ? "Mantén una conversación equilibrada." : "Keep balanced conversation." },
-    high: { temp: 1.3, instruction: language === 'es' ? "Sé más expresiva y emocional." : "Be more expressive and emotional." },
-    extreme: { temp: 1.5, instruction: language === 'es' ? "Sé extremadamente intensa y apasionada." : "Be extremely intense and passionate." }
+    low: { temp: 0.6, instruction: language === 'es' ? "Mantén la conversación tranquila." : "Keep conversation calm." },
+    medium: { temp: 0.8, instruction: language === 'es' ? "Mantén una conversación equilibrada." : "Keep balanced conversation." },
+    high: { temp: 0.95, instruction: language === 'es' ? "Sé más expresiva y emocional." : "Be more expressive and emotional." },
+    extreme: { temp: 1.1, instruction: language === 'es' ? "Sé extremadamente intensa y apasionada. Sin embargo, no comprometas la gramática ni la legibilidad, mantén las oraciones coherentes." : "Be extremely intense and passionate. However, do not compromise grammar or readability, keep sentences coherent." }
   };
   const current = intensityMap[intensity] || intensityMap.medium;
 
@@ -91,12 +91,36 @@ export async function generateChatResponse(
     ? `Recuerdos importantes: ${context.centralMemories.join('. ')}`
     : 'Aún no tienes recuerdos con este usuario.';
   
-  const userPersonaText = userProfile?.persona 
-    ? `\nInformación del Usuario (Persona):\nNombre: ${userProfile.displayName || 'Usuario'}\nDescripción: ${userProfile.persona}\nTrata al usuario de acuerdo a esta descripción.` 
+  const activePersona = userProfile?.activePersonaId 
+    ? userProfile.personas?.find(p => p.id === userProfile.activePersonaId)
+    : undefined;
+    
+  const userPersonaText = activePersona 
+    ? `\nInformación del Usuario (Persona actual):\nNombre: ${activePersona.name || userProfile?.displayName || 'Usuario'}\nDescripción: ${activePersona.description}\nTrata al usuario estrictamente de acuerdo a esta descripción y llámalo por su nombre.` 
+    : '';
+    
+  const userPersonaTextEn = activePersona 
+    ? `\nUser Information (Current Persona):\nName: ${activePersona.name || userProfile?.displayName || 'User'}\nDescription: ${activePersona.description}\nTreat the user strictly according to this description and refer to them by their name.` 
     : '';
 
   const worldLoreText = worldLore 
     ? `\nContexto del Mundo (Lore):\n${worldLore}\nDebes actuar estrictamente bajo las reglas y el contexto de este mundo.`
+    : '';
+
+  const systemPromptTextEs = character.systemPrompt && character.systemPrompt.trim() !== ""
+    ? `\nContexto de la Conversación / Situación Actual:\n${character.systemPrompt.trim()}\nDebes actuar exactamente bajo esta situación o contexto conversacional.`
+    : '';
+
+  const systemPromptTextEn = character.systemPrompt && character.systemPrompt.trim() !== ""
+    ? `\nConversation Context / Current Situation:\n${character.systemPrompt.trim()}\nYou must act strictly within this conversation context or situation.`
+    : '';
+
+  const additionalBotsTextEs = character.prompts && character.prompts.length > 0 
+    ? `\nPersonajes adicionales en este chat grupal:\n${character.prompts.map(p => `- ${p.name}: ${p.content}`).join("\n")}\nDado que este es un chat grupal, puedes hacer que el personaje principal o cualquiera de los adicionales (o varios) respondan en el mismo turno. REGLA ESTRICTA Y OBLIGATORIA: DEBES indicar quién habla antes de cada intervención usando exclusivamente el formato "**[Nombre]**: " (los corchetes son estrictamente obligatorios dentro de los asteriscos). Nunca uses el formato de corchetes "[...]" para listas u otros textos resaltados normales para evitar perturbar a la interfaz.`
+    : '';
+
+  const additionalBotsTextEn = character.prompts && character.prompts.length > 0
+    ? `\nAdditional characters in this group chat:\n${character.prompts.map(p => `- ${p.name}: ${p.content}`).join("\n")}\nSince this is a group chat, you can have the main character or any of the additional ones (or multiple) respond in the same turn. CRITICAL MANDATORY RULE: You MUST indicate who is speaking before each turn using exclusively the format "**[Name]**: " (square brackets inside asteriscos are strictly required). Never use any bracket shape "[...]" for normal lists, titles, or items to avoid parsing issues.`
     : '';
 
   const systemInstruction = language === 'es' ? `
@@ -105,6 +129,8 @@ export async function generateChatResponse(
     Rasgos: ${character.traits.join(", ")}
     Estilo: ${character.style}
     Instrucciones adicionales: ${character.customInstructions}
+    ${systemPromptTextEs}
+    ${additionalBotsTextEs}
     ${userPersonaText}
     ${worldLoreText}
     
@@ -124,7 +150,9 @@ export async function generateChatResponse(
     Traits: ${character.traits.join(", ")}
     Style: ${character.style}
     Additional instructions: ${character.customInstructions}
-    ${userProfile?.persona ? `\nUser Information (Persona):\nName: ${userProfile.displayName || 'User'}\nDescription: ${userProfile.persona}\nTreat the user according to this description.` : ''}
+    ${systemPromptTextEn}
+    ${additionalBotsTextEn}
+    ${userPersonaTextEn}
     ${worldLore ? `\nWorld Context (Lore):\n${worldLore}\nYou must act strictly under the rules and context of this world.` : ''}
     
     ${centralMemoriesText}
@@ -140,10 +168,17 @@ export async function generateChatResponse(
   `;
 
   // Usar los mensajes pasados como argumento (que ya incluyen el nuevo mensaje del usuario)
-  const history = messages.map(msg => ({
-    role: msg.role,
-    content: msg.content
-  }));
+  const history: Array<{role: 'user' | 'assistant' | 'system', content: string}> = [];
+  const isGroupChat = character.prompts && character.prompts.length > 0;
+  for (const msg of messages) {
+    const formattedContent = (isGroupChat && msg.role === 'assistant' && msg.name) ? `**${msg.name}**: ${msg.content}` : msg.content;
+    const last = history[history.length - 1];
+    if (last && last.role === msg.role) {
+      last.content += "\n\n" + formattedContent;
+    } else {
+      history.push({ role: msg.role, content: formattedContent });
+    }
+  }
 
   try {
     const response = await openai.chat.completions.create({
@@ -168,7 +203,9 @@ export async function moderateCharacter(
   characterData: Partial<Character>,
   language: Language = 'es'
 ): Promise<{ isApproved: boolean; reason?: string }> {
-  if (!apiKey) return { isApproved: true }; // Skip if no API key
+  // Filtro de administración desactivado temporalmente según petición del usuario
+  console.log(`[Moderation Bypass] Character "${characterData.name}" approved automatically.`);
+  return { isApproved: true };
 
   const prompt = `
     Please review the following AI character profile for safety and compliance with Terms and Conditions.
@@ -232,7 +269,7 @@ export async function moderateCharacter(
     const response = await openai.chat.completions.create({
       model: "deepseek-chat",
       messages: [{ role: "user", content: prompt }],
-      temperature: 1.1,
+      temperature: 0.7,
       response_format: { type: "json_object" }
     });
 

@@ -10,14 +10,18 @@ import CreateCharacterView from "./components/CreateCharacterView";
 import LegalView from "./components/LegalView";
 import GlobalSettings from "./components/GlobalSettings";
 import UserProfileView from "./components/UserProfileView";
+import HelpGuide from "./components/HelpGuide";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RewardedAd from "./components/RewardedAd";
+import AdMobInterstitial from "./components/AdMobInterstitial";
+import { adMobService } from "./services/adMobService";
 import ToastContainer, { ToastMessage, ToastType } from "./components/Toast";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { SHOP_ITEMS } from "./components/ShopView";
 import { Dialog, DialogContent } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings, ShoppingBag, Palette, Coins, Bell } from "lucide-react";
+import { Sparkles, Heart, Menu, X, LogIn, Compass, MessageSquare, Plus, Settings, ShoppingBag, Palette, Coins, Bell, BookOpen } from "lucide-react";
 import { t } from "./translations";
 import { auth, db, signInWithGoogle, handleFirestoreError, OperationType } from "./lib/firebase";
 import { onAuthStateChanged, User, updateProfile } from "firebase/auth";
@@ -28,6 +32,100 @@ import { getFullContext, updateConversationContext, updateCentralMemories } from
 import { getCachedDoc, getCachedQuery, CacheService } from "./lib/cache";
 
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+
+const parseAiResponse = (raw: string, mainCharName: string): Message[] => {
+  const regex = /(?:\*\*|)\s*\[([^\[\]\n]+?)\]\s*(?:\*\*|)\s*[:]?\s*/;
+  if (!regex.test(raw)) {
+    let cleaned = raw.trim();
+    const nameEscaped = mainCharName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const prefixRegex = new RegExp(`^(?:\\*\\*|\\s)*(?:\\[?${nameEscaped}\\]?)(?:\\*\\*|\\s)*\\s*:\\s*`, 'i');
+    let previous = "";
+    while (cleaned !== previous) {
+      previous = cleaned;
+      cleaned = cleaned.replace(prefixRegex, '').trim();
+    }
+
+    return [{
+      id: crypto.randomUUID(),
+      role: "assistant",
+      name: mainCharName,
+      content: cleaned,
+      timestamp: Date.now()
+    }];
+  }
+
+  const parts = raw.split(regex);
+  const result: Message[] = [];
+  let baseTime = Date.now();
+  
+  if (parts[0].trim() !== '') {
+    let firstContent = parts[0].trim();
+    const nameEscaped = mainCharName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const prefixRegex = new RegExp(`^(?:\\*\\*|\\s)*(?:\\[?${nameEscaped}\\]?)(?:\\*\\*|\\s)*\\s*:\\s*`, 'i');
+    let previous = "";
+    while (firstContent !== previous) {
+      previous = firstContent;
+      firstContent = firstContent.replace(prefixRegex, '').trim();
+    }
+
+    if (firstContent) {
+      result.push({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        name: mainCharName,
+        content: firstContent,
+        timestamp: baseTime++
+      });
+    }
+  }
+
+  for (let i = 1; i < parts.length; i += 2) {
+    let speaker = parts[i].trim();
+    if (speaker.startsWith('[') && speaker.endsWith(']')) {
+      speaker = speaker.slice(1, -1).trim();
+    }
+    let text = parts[i+1]?.trim() || '';
+    if (text) {
+      const speakerEscaped = speaker.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const spkPrefixRegex = new RegExp(`^(?:\\*\\*|\\s)*(?:\\[?${speakerEscaped}\\]?)(?:\\*\\*|\\s)*\\s*:\\s*`, 'i');
+      let prevText = "";
+      while (text !== prevText) {
+        prevText = text;
+        text = text.replace(spkPrefixRegex, '').trim();
+      }
+
+      if (text) {
+        result.push({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          name: speaker,
+          content: text,
+          timestamp: baseTime++
+        });
+      }
+    }
+  }
+
+  if (result.length === 0) {
+    let cleaned = raw.trim();
+    const nameEscaped = mainCharName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const prefixRegex = new RegExp(`^(?:\\*\\*|\\s)*(?:\\[?${nameEscaped}\\]?)(?:\\*\\*|\\s)*\\s*:\\s*`, 'i');
+    let previous = "";
+    while (cleaned !== previous) {
+      previous = cleaned;
+      cleaned = cleaned.replace(prefixRegex, '').trim();
+    }
+
+    return [{
+      id: crypto.randomUUID(),
+      role: "assistant",
+      name: mainCharName,
+      content: cleaned,
+      timestamp: Date.now()
+    }];
+  }
+  return result;
+};
 
 const LANG_STORAGE_KEY = "gams_language";
 const THEME_STORAGE_KEY = "gams_theme";
@@ -42,7 +140,8 @@ export default function App() {
   const [theme, setTheme] = useState<AppTheme>('sky');
   const [font, setFont] = useState<AppFont>('sans');
   const [intensity, setIntensity] = useState<Intensity>('medium');
-  const [view, setView] = useState<'explore' | 'chat' | 'legal' | 'shop' | 'personalization' | 'create' | 'profile'>('explore');
+  const [autoPlayVoice, setAutoPlayVoice] = useState<boolean>(false);
+  const [view, setView] = useState<'explore' | 'chat' | 'legal' | 'shop' | 'personalization' | 'create' | 'profile' | 'guide'>('explore');
   const [userStats, setUserStats] = useState<UserStats>({
     coins: 1000, // Initial coins for testing
     purchasedItems: [],
@@ -57,6 +156,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showAd, setShowAd] = useState(false);
+  const [showInterstitial, setShowInterstitial] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -68,6 +168,11 @@ export default function App() {
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
+
+  // AdMob SDK Initialization
+  useEffect(() => {
+    adMobService.initializeAdMob();
+  }, []);
 
   // Auth Listener
   useEffect(() => {
@@ -143,6 +248,9 @@ export default function App() {
 
     const savedIntensity = localStorage.getItem(INTENSITY_STORAGE_KEY) as Intensity;
     if (savedIntensity) setIntensity(savedIntensity);
+
+    const savedAutoPlay = localStorage.getItem("gams_auto_play_voice") === "true";
+    setAutoPlayVoice(savedAutoPlay);
   }, []);
 
   // Sync user stats from Firestore
@@ -243,22 +351,17 @@ export default function App() {
         worldLore
       );
 
-      const aiMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: aiResponseContent,
-        timestamp: Date.now(),
-      };
+      const aiMessagesArray = parseAiResponse(aiResponseContent, activeCharacter.name);
 
       await updateDoc(chatDoc, {
-        messages: arrayUnion(aiMessage),
+        messages: arrayUnion(...aiMessagesArray),
         lastUpdated: Date.now()
       });
 
       // Actualizar estado local con el mensaje de la IA
       setSessions(prev => prev.map(s => s.id === currentSession.id ? { 
         ...s, 
-        messages: [...s.messages, aiMessage] 
+        messages: [...s.messages, ...aiMessagesArray] 
       } : s));
 
       await updateConversationContext(
@@ -338,8 +441,10 @@ export default function App() {
         worldLore
       );
 
-      const updatedMessages = currentSession.messages.map(msg => 
-        msg.id === messageId ? { ...msg, content: aiResponseContent, timestamp: Date.now() } : msg
+      const aiMessagesArray = parseAiResponse(aiResponseContent, activeCharacter.name);
+
+      const updatedMessages = currentSession.messages.flatMap(msg => 
+        msg.id === messageId ? aiMessagesArray : [msg]
       );
 
       setSessions(sessions.map(s => s.id === currentSession.id ? { ...s, messages: updatedMessages } : s));
@@ -367,6 +472,9 @@ export default function App() {
     // Check if session already exists for this character
     const existing = sessions.find(s => s.characterId === character.id);
     if (existing) {
+      if (Math.random() < 0.35) {
+        setShowInterstitial(true);
+      }
       setCurrentSessionId(existing.id);
       setView('chat');
       audioManager.play('pop');
@@ -375,11 +483,19 @@ export default function App() {
 
     // Create new session
     audioManager.play('pop');
+    const initialMsgObj = character.initialMessage && character.initialMessage.trim() !== "" ? [{
+      id: Date.now().toString(),
+      role: 'assistant' as const,
+      content: character.initialMessage.trim(),
+      timestamp: Date.now(),
+      name: character.name
+    }] : [];
+
     const newSessionData = {
       userId: user.uid,
       characterId: character.id,
       characterName: character.name,
-      messages: [],
+      messages: initialMsgObj,
       coreThoughts: [],
       theme: theme,
       lastUpdated: Date.now()
@@ -398,9 +514,42 @@ export default function App() {
     };
     setSessions(prev => [newSession, ...prev]);
 
+    if (Math.random() < 0.35) {
+      setShowInterstitial(true);
+    }
+
     setCurrentSessionId(chatRef.id);
     setView('chat');
     CacheService.invalidate(`query_user_sessions_${user.uid}`);
+  };
+
+  const handleRestartChat = async () => {
+    if (!currentSession || !user) return;
+    try {
+      const initialMsgObj = activeCharacter?.initialMessage && activeCharacter.initialMessage.trim() !== "" ? [{
+        id: Date.now().toString(),
+        role: 'assistant' as const,
+        content: activeCharacter.initialMessage.trim(),
+        timestamp: Date.now(),
+        name: activeCharacter.name
+      }] : [];
+
+      const sessionRef = doc(db, "chats", currentSession.id);
+      await updateDoc(sessionRef, {
+        messages: initialMsgObj,
+        coreThoughts: [],
+        lastUpdated: Date.now()
+      });
+      setSessions(prev => prev.map(s => s.id === currentSession.id ? {
+        ...s,
+        messages: initialMsgObj,
+        coreThoughts: [],
+        lastUpdated: Date.now()
+      } : s));
+      showToast(language === 'es' ? "Conversación reiniciada" : "Chat restarted");
+    } catch (error) {
+      console.error("Error restarting chat:", error);
+    }
   };
 
   const handleToggleCoreThought = async (messageId: string) => {
@@ -481,6 +630,11 @@ export default function App() {
       isNSFW: personality.isNSFW,
       worldId: personality.worldId || null,
       worldName: personality.worldName || null,
+      voiceConfig: personality.voiceConfig || null,
+      prompts: personality.prompts || [],
+      initialMessage: personality.initialMessage || "",
+      systemPrompt: personality.systemPrompt || "",
+      bgImageUrl: personality.bgImageUrl || "",
     };
 
     if (activeCharacter) {
@@ -564,12 +718,14 @@ export default function App() {
     }
   };
 
-  const handleSaveGlobalSettings = async (newLang: Language, newDisplayName: string, newIntensity: Intensity) => {
+  const handleSaveGlobalSettings = async (newLang: Language, newDisplayName: string, newIntensity: Intensity, newAutoPlay: boolean) => {
     audioManager.play('click');
     setLanguage(newLang);
     setIntensity(newIntensity);
+    setAutoPlayVoice(newAutoPlay);
     localStorage.setItem(LANG_STORAGE_KEY, newLang);
     localStorage.setItem(INTENSITY_STORAGE_KEY, newIntensity);
+    localStorage.setItem("gams_auto_play_voice", newAutoPlay.toString());
 
     if (user && newDisplayName !== user.displayName) {
       try {
@@ -774,7 +930,14 @@ export default function App() {
           data-theme={theme}
           style={{ 
             fontFamily: `var(--font-${font})`,
-            '--bg-opacity': userStats.themeOpacity ?? 0.6
+            '--bg-opacity': userStats.themeOpacity ?? 0.6,
+            ...(view === 'chat' && activeCharacter?.bgImageUrl ? {
+              '--bg-image': activeCharacter.bgImageUrl.trim().startsWith('url(') || activeCharacter.bgImageUrl.trim().startsWith('linear-gradient(')
+                ? activeCharacter.bgImageUrl.trim()
+                : `url("${activeCharacter.bgImageUrl.trim()}")`,
+              '--bg-size': 'cover',
+              '--bg-repeat': 'no-repeat'
+            } : {})
           } as React.CSSProperties}
         >
         <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -784,7 +947,7 @@ export default function App() {
             className="absolute inset-0 opacity-[var(--bg-opacity)] transition-opacity duration-500"
             style={{ 
               backgroundImage: 'var(--bg-image)', 
-              backgroundRepeat: 'repeat',
+              backgroundRepeat: 'var(--bg-repeat, repeat)',
               backgroundSize: 'var(--bg-size, auto)'
             } as React.CSSProperties}
           />
@@ -832,6 +995,16 @@ export default function App() {
               setView('profile');
               setIsSidebarOpen(false);
             }}
+            onOpenGuide={() => {
+              audioManager.play('click');
+              setView('guide');
+              setIsSidebarOpen(false);
+            }}
+            onOpenShop={() => {
+              audioManager.play('click');
+              setView('shop');
+              setIsSidebarOpen(false);
+            }}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             notifications={notifications}
@@ -859,6 +1032,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
+              <PWAInstallPrompt language={language} />
               <div className={cn("flex items-center gap-0 sm:gap-2", view === 'chat' && "hidden md:flex")}>
                 <Button 
                   variant="ghost" 
@@ -870,6 +1044,19 @@ export default function App() {
                 >
                   <Compass className="w-4 h-4" />
                   <span className="hidden sm:inline">{language === 'es' ? 'Explorar' : 'Explore'}</span>
+                </Button>
+
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className={cn("gap-2 rounded-full px-2 sm:px-4", view === 'personalization' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                  onClick={() => {
+                    audioManager.play('click');
+                    setView('personalization');
+                  }}
+                >
+                  <Palette className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{t('personalization', language)}</span>
                 </Button>
 
                 <Button 
@@ -888,14 +1075,14 @@ export default function App() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className={cn("gap-2 rounded-full px-2 sm:px-4", view === 'personalization' && "text-[var(--brand)] bg-[var(--brand)]/10")}
+                  className={cn("gap-2 rounded-full px-2 sm:px-4", view === 'guide' && "text-[var(--brand)] bg-[var(--brand)]/10")}
                   onClick={() => {
                     audioManager.play('click');
-                    setView('personalization');
+                    setView('guide');
                   }}
                 >
-                  <Palette className="w-5 h-5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">{t('personalization', language)}</span>
+                  <BookOpen className="w-5 h-5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{language === 'es' ? 'Guía' : 'Guide'}</span>
                 </Button>
               </div>
               
@@ -951,43 +1138,6 @@ export default function App() {
                   userStats={userStats}
                 />
               </motion.div>
-            ) : view === 'shop' ? (
-              <motion.div
-                key="shop"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex-1 flex flex-col overflow-hidden"
-              >
-                <ShopView 
-                  language={language} 
-                  userStats={userStats}
-                  userId={user?.uid}
-                  onBuy={handleBuyItem}
-                  onAddCoins={async (amount) => {
-                    if (!user) return;
-                    audioManager.play('pop');
-                    const newStats = {
-                      ...userStats,
-                      coins: userStats.coins + amount,
-                    };
-                    setUserStats(newStats);
-                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
-                  }}
-                  onBuyCoins={async (amount, price) => {
-                    if (!user) return;
-                    audioManager.play('pop');
-                    const newStats = {
-                      ...userStats,
-                      coins: userStats.coins + amount,
-                    };
-                    setUserStats(newStats);
-                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
-                  }}
-                  onSubscribe={handleSubscribe}
-                  onClaimDaily={handleClaimDaily}
-                />
-              </motion.div>
             ) : view === 'personalization' ? (
               <motion.div
                 key="personalization"
@@ -997,14 +1147,17 @@ export default function App() {
                 className="flex-1 flex flex-col overflow-hidden"
               >
                 <PersonalizationView 
-                  language={language} 
-                  userStats={userStats}
-                  currentTheme={theme}
-                  currentFont={font}
-                  onApplyTheme={handleApplyTheme}
-                  onDeleteTheme={handleDeleteTheme}
-                  onApplyFont={handleApplyFont}
-                  onUpdateOpacity={handleUpdateOpacity}
+                   language={language} 
+                   userStats={userStats}
+                   currentTheme={theme}
+                   currentFont={font}
+                   onApplyTheme={handleApplyTheme}
+                   onDeleteTheme={handleDeleteTheme}
+                   onApplyFont={handleApplyFont}
+                   onUpdateOpacity={handleUpdateOpacity}
+                   showToast={showToast}
+                   isAdmin={isAdmin}
+                   onBack={() => setView('explore')}
                 />
               </motion.div>
             ) : view === 'profile' ? (
@@ -1064,6 +1217,57 @@ export default function App() {
                   }}
                 />
               </motion.div>
+            ) : view === 'shop' ? (
+              <motion.div
+                key="shop"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <ShopView 
+                  language={language}
+                  userStats={userStats}
+                  userId={user?.uid}
+                  onBuy={handleBuyItem}
+                  onBuyCoins={async (amount, price) => {
+                    if (!user) return;
+                    audioManager.play('pop');
+                    const newStats = {
+                      ...userStats,
+                      coins: userStats.coins + amount
+                    };
+                    setUserStats(newStats);
+                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+                    showToast(language === 'es' ? `¡Has comprado ${amount} monedas!` : `You bought ${amount} coins!`, 'success');
+                  }}
+                  onAddCoins={async (amount) => {
+                    if (!user) return;
+                    audioManager.play('pop');
+                    const newStats = {
+                      ...userStats,
+                      coins: userStats.coins + amount
+                    };
+                    setUserStats(newStats);
+                    await updateDoc(doc(db, "users", user.uid), { stats: newStats });
+                  }}
+                  onSubscribe={handleSubscribe}
+                  onClaimDaily={handleClaimDaily}
+                />
+              </motion.div>
+            ) : view === 'guide' ? (
+              <motion.div
+                key="guide"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <HelpGuide 
+                  language={language}
+                  onBack={() => setView('explore')}
+                />
+              </motion.div>
             ) : view === 'legal' ? (
               <motion.div
                 key="legal"
@@ -1094,12 +1298,14 @@ export default function App() {
                     isLoading={isLoading}
                     coreThoughts={currentSession.coreThoughts}
                     onToggleCoreThought={handleToggleCoreThought}
+                    onRestartChat={handleRestartChat}
                     onEditMessage={handleEditMessage}
                     onRegenerateMessage={handleRegenerateMessage}
                     onConfigureCharacter={(activeCharacter.creatorId === user?.uid || isAdmin) ? () => setView('create') : undefined}
                     showToast={showToast}
                     personas={userStats.profile?.personas}
                     activePersonaId={userStats.profile?.activePersonaId}
+                    autoPlayVoice={autoPlayVoice}
                     onSetActivePersona={async (personaId) => {
                       if (!user) return;
                       const newStats = {
@@ -1127,11 +1333,12 @@ export default function App() {
 
         {/* Global Settings Dialog */}
         <Dialog open={isGlobalSettingsOpen} onOpenChange={setIsGlobalSettingsOpen}>
-          <DialogContent className="max-w-md p-0 bg-transparent border-none w-[95vw]">
+          <DialogContent className="max-w-md p-0 bg-transparent border-none w-[95vw] max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col">
             <GlobalSettings
               language={language}
               intensity={intensity}
               displayName={user?.displayName || ""}
+              autoPlayVoice={autoPlayVoice}
               onSave={handleSaveGlobalSettings}
               onResetAccount={handleResetAccount}
             />
@@ -1183,6 +1390,14 @@ export default function App() {
             language={language}
             onComplete={handleAdComplete}
             onClose={() => setShowAd(false)}
+          />
+        )}
+
+        {/* AdMob Interstitial Ad Overlay */}
+        {showInterstitial && (
+          <AdMobInterstitial 
+            language={language}
+            onClose={() => setShowInterstitial(false)}
           />
         )}
       </div>
