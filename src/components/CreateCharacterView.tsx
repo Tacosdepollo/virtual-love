@@ -6,7 +6,7 @@ import { Textarea } from "./ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
-import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle, Upload, Camera, HelpCircle, ArrowLeft, Coins, Image as ImageIcon, Mic, User } from "lucide-react";
+import { X, Plus, Sparkles, Palette, Check, Globe, Trash2, AlertTriangle, Upload, Camera, HelpCircle, ArrowLeft, Coins, Image as ImageIcon, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import CharacterCreationHelp from "./CharacterCreationHelp";
@@ -729,60 +729,7 @@ export default function CreateCharacterView({
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900/40 border-zinc-800/50 backdrop-blur-xl rounded-2xl overflow-hidden">
-              <CardHeader>
-                <CardTitle className="text-lg text-[var(--brand)] flex items-center gap-2">
-                  <Mic className="w-5 h-5" />
-                  {t('voiceDesign', selectedLanguage)}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="bg-[var(--brand)]/10 border border-[var(--brand)]/20 p-4 rounded-xl text-sm text-[var(--brand)]">
-                    {selectedLanguage === 'es' 
-                      ? 'Selecciona una de las voces inmersivas y súper rápidas impulsadas por Gemini.'
-                      : 'Select one of the immersive and super-fast voices powered by Gemini.'}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-[var(--brand)] font-bold">{selectedLanguage === 'es' ? 'Voz' : 'Voice'}</Label>
-                    <div className="flex bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-[var(--brand)] focus-within:border-[var(--brand)]">
-                      <select
-                        value={edited.voiceConfig?.description || "Kore"}
-                        onChange={(e) => setEdited({
-                          ...edited,
-                          voiceConfig: { ...(edited.voiceConfig || {}), description: e.target.value }
-                        })}
-                        className="w-full bg-transparent h-12 px-3 text-zinc-100 outline-none appearance-none"
-                      >
-                        <option value="Kore">Kore ({selectedLanguage === 'es' ? 'Femenina, Suave' : 'Female, Soft'})</option>
-                        <option value="Puck">Puck ({selectedLanguage === 'es' ? 'Femenina, Enérgica' : 'Female, Energetic'})</option>
-                        <option value="Zephyr">Zephyr ({selectedLanguage === 'es' ? 'Femenina, Profunda' : 'Female, Deep'})</option>
-                        <option value="Charon">Charon ({selectedLanguage === 'es' ? 'Masculina, Grave' : 'Male, Deep'})</option>
-                        <option value="Fenrir">Fenrir ({selectedLanguage === 'es' ? 'Masculina, Rasposa' : 'Male, Raspy'})</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="pt-2">
-                  <Button
-                    className="w-full bg-[var(--brand)] hover:opacity-90 text-white rounded-xl py-6 font-bold flex items-center justify-center gap-2"
-                    onClick={async () => {
-                      const desc = edited.voiceConfig?.description || "Kore";
-                      const { playSpeech } = await import("../services/ttsService");
-                      const sampleText = selectedLanguage === 'es' 
-                        ? `Hola, mi nombre es ${edited.name || 'tu creación'}. ¿Qué te parece mi voz?`
-                        : `Hello, my name is ${edited.name || 'your creation'}. How do you like my voice?`;
-                      playSpeech(sampleText, desc, selectedLanguage);
-                    }}
-                  >
-                    <Mic className="w-5 h-5" />
-                    {t('voicePreview', selectedLanguage)}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Right Column: Settings & Actions */}

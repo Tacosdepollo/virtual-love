@@ -45,14 +45,16 @@ export default function PersonalizationView({
   const allThemes = Array.from(new Set([
     ...DEFAULT_THEMES, 
     ...userStats.unlockedThemes,
-    'storm', 'stone', 'brick', 'clouds', 'whitewood', 'bluewood', 'nostalgia', 'inspiracion', 'alegria', 'midnight', 'forest', 'sunset', 'ocean', 'lava', 'neon', 'sakura', 'gold', 'mint', 'violet', 'cyberpunk', 'frutigeraero'
+    'storm', 'stone', 'brick', 'clouds', 'whitewood', 'bluewood', 'nostalgia', 'inspiracion', 'alegria', 'midnight', 'forest', 'sunset', 'ocean', 'lava', 'neon', 'sakura', 'gold', 'mint', 'violet', 'cyberpunk', 'frutigeraero',
+    'gothic', 'cyberpunk-yellow', 'steampunk', 'arctic', 'toxic', 'bubblegum', 'marshmallow', 'abyss', 'firefly', 'glitch', 'cozy-fireplace', 'northern-lights', 'vintage-sepia', 'graffiti', 'matcha', 'obsidian', 'hyperlight', 'peach-fuzz', 'oasis', 'nebula'
   ])) as AppTheme[];
   
   const allFonts = Array.from(new Set([
     ...DEFAULT_FONTS, 
     'audiowide', 'jacquard', 'montecarlo', 'saira', 'silkscreen',
     'playfair', 'montserrat', 'oswald', 'lobster', 'pacifico', 
-    'righteous', 'bangers', 'orbitron', 'press-start', 'dancing-script'
+    'righteous', 'bangers', 'orbitron', 'press-start', 'dancing-script',
+    'cinzel', 'sacramento', 'vt323', 'fascinate', 'syncopate', 'cabin-sketch', 'rye', 'permanent-marker', 'creepster', 'aboreto', 'barlow-condensed', 'alumni-collegiate', 'platypi', 'yesteryear', 'unifraktur', 'niconne', 'rubik-mono', 'teko', 'monoton', 'cinzel-dec'
   ]));
 
   return (

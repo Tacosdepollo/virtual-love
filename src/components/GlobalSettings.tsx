@@ -3,7 +3,7 @@ import { AppTheme, Language, Intensity } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
-import { Settings, Palette, Check, Globe, User, Zap, AlertTriangle, Trash2, Mic } from "lucide-react";
+import { Settings, Palette, Check, Globe, User, Zap, AlertTriangle, Trash2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { t } from "../translations";
 import { Input } from "./ui/input";
@@ -97,32 +97,6 @@ export default function GlobalSettings({ language, intensity, displayName, autoP
               </Button>
             ))}
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2 text-zinc-300 text-xs sm:text-sm">
-            <Mic className="w-4 h-4" />
-            {t('voiceSettings', selectedLanguage)}
-          </Label>
-          <Button
-            variant="outline"
-            onClick={() => setAutoPlay(!autoPlay)}
-            className={cn(
-              "w-full h-10 rounded-xl justify-between px-3 text-xs transition-all",
-              autoPlay ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]" : "border-zinc-800 text-zinc-400"
-            )}
-          >
-            <span>{t('autoPlayVoice', selectedLanguage)}</span>
-            <div className={cn(
-              "w-8 h-5 rounded-full p-0.5 transition-colors relative",
-              autoPlay ? "bg-[var(--brand)]" : "bg-zinc-800"
-            )}>
-              <div className={cn(
-                "w-4 h-4 rounded-full bg-white transition-transform",
-                autoPlay ? "translate-x-3" : "translate-x-0"
-              )} />
-            </div>
-          </Button>
         </div>
 
         <div className="space-y-3 pt-2">

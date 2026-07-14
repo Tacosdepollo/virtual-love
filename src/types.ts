@@ -88,9 +88,9 @@ export interface Personality {
   bgImageUrl?: string;
 }
 
-export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'calma' | 'proteccion' | 'cyberpunk' | 'frutiger' | 'midnight' | 'forest' | 'sunset' | 'ocean' | 'lava' | 'neon' | 'sakura' | 'gold' | 'mint' | 'violet';
+export type AppTheme = 'rose' | 'emerald' | 'amber' | 'sky' | 'space' | 'retro' | 'storm' | 'stone' | 'brick' | 'clouds' | 'whitewood' | 'bluewood' | 'nostalgia' | 'calma' | 'proteccion' | 'cyberpunk' | 'frutiger' | 'frutigeraero' | 'inspiracion' | 'alegria' | 'midnight' | 'forest' | 'sunset' | 'ocean' | 'lava' | 'neon' | 'sakura' | 'gold' | 'mint' | 'violet' | 'gothic' | 'cyberpunk-yellow' | 'steampunk' | 'arctic' | 'toxic' | 'bubblegum' | 'marshmallow' | 'abyss' | 'firefly' | 'glitch' | 'cozy-fireplace' | 'northern-lights' | 'vintage-sepia' | 'graffiti' | 'matcha' | 'obsidian' | 'hyperlight' | 'peach-fuzz' | 'oasis' | 'nebula';
 
-export type AppFont = 'sans' | 'audiowide' | 'jacquard' | 'montecarlo' | 'saira' | 'silkscreen' | 'playfair' | 'montserrat' | 'oswald' | 'lobster' | 'pacifico' | 'righteous' | 'bangers' | 'orbitron' | 'press-start' | 'dancing-script';
+export type AppFont = 'sans' | 'audiowide' | 'jacquard' | 'montecarlo' | 'saira' | 'silkscreen' | 'playfair' | 'montserrat' | 'oswald' | 'lobster' | 'pacifico' | 'righteous' | 'bangers' | 'orbitron' | 'press-start' | 'dancing-script' | 'cinzel' | 'sacramento' | 'vt323' | 'fascinate' | 'syncopate' | 'cabin-sketch' | 'rye' | 'permanent-marker' | 'creepster' | 'aboreto' | 'barlow-condensed' | 'alumni-collegiate' | 'platypi' | 'yesteryear' | 'unifraktur' | 'niconne' | 'rubik-mono' | 'teko' | 'monoton' | 'cinzel-dec';
 
 export interface ShopItem {
   id: string;

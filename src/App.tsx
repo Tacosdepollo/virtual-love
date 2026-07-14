@@ -11,6 +11,7 @@ import LegalView from "./components/LegalView";
 import GlobalSettings from "./components/GlobalSettings";
 import UserProfileView from "./components/UserProfileView";
 import HelpGuide from "./components/HelpGuide";
+import QuickTour from "./components/QuickTour";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RewardedAd from "./components/RewardedAd";
 import AdMobInterstitial from "./components/AdMobInterstitial";
@@ -159,6 +160,14 @@ export default function App() {
   const [showInterstitial, setShowInterstitial] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [showTour, setShowTour] = useState<boolean>(false);
+
+  useEffect(() => {
+    const isTourCompleted = localStorage.getItem("gimsai_tour_completed") === "true";
+    if (!isTourCompleted) {
+      setShowTour(true);
+    }
+  }, []);
 
   const showToast = (message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -1398,6 +1407,17 @@ export default function App() {
           <AdMobInterstitial 
             language={language}
             onClose={() => setShowInterstitial(false)}
+          />
+        )}
+
+        {/* Quick Tour Overlay */}
+        {showTour && (
+          <QuickTour
+            language={language}
+            onClose={() => {
+              localStorage.setItem("gimsai_tour_completed", "true");
+              setShowTour(false);
+            }}
           />
         )}
       </div>

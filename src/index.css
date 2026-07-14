@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Lobster&family=Pacifico&family=Righteous&family=Bangers&family=Orbitron:wght@400;700&family=Press+Start+2P&family=Dancing+Script:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Lobster&family=Pacifico&family=Righteous&family=Bangers&family=Orbitron:wght@400;700&family=Press+Start+2P&family=Dancing+Script:wght@400;700&family=Cinzel:wght@400;700&family=Sacramento&family=VT323&family=Fascinate&family=Syncopate:wght@400;700&family=Cabin+Sketch:wght@400;700&family=Rye&family=Permanent+Marker&family=Creepster&family=Aboreto&family=Barlow+Condensed:wght@400;700&family=Alumni+Sans+Collegiate+One&family=Platypi:wght@400;700&family=Yesteryear&family=UnifrakturMaguntia&family=Niconne&family=Rubik+Mono+One&family=Teko:wght@400;700&family=Monoton&family=Cinzel+Decorative:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @layer components {
@@ -79,6 +79,26 @@
   --font-orbitron: "Orbitron", sans-serif;
   --font-press-start: "Press Start 2P", system-ui;
   --font-dancing-script: "Dancing Script", cursive;
+  --font-cinzel: "Cinzel", serif;
+  --font-sacramento: "Sacramento", cursive;
+  --font-vt323: "VT323", monospace;
+  --font-fascinate: "Fascinate", display;
+  --font-syncopate: "Syncopate", sans-serif;
+  --font-cabin-sketch: "Cabin Sketch", cursive;
+  --font-rye: "Rye", display;
+  --font-permanent-marker: "Permanent Marker", cursive;
+  --font-creepster: "Creepster", display;
+  --font-aboreto: "Aboreto", display;
+  --font-barlow-condensed: "Barlow Condensed", sans-serif;
+  --font-alumni-collegiate: "Alumni Sans Collegiate One", sans-serif;
+  --font-platypi: "Platypi", serif;
+  --font-yesteryear: "Yesteryear", cursive;
+  --font-unifraktur: "UnifrakturMaguntia", serif;
+  --font-niconne: "Niconne", cursive;
+  --font-rubik-mono: "Rubik Mono One", monospace;
+  --font-teko: "Teko", sans-serif;
+  --font-monoton: "Monoton", display;
+  --font-cinzel-dec: "Cinzel Decorative", serif;
 }
 
 @import "tw-animate-css";
@@ -146,6 +166,26 @@
     --font-orbitron: "Orbitron", sans-serif;
     --font-press-start: "Press Start 2P", system-ui;
     --font-dancing-script: "Dancing Script", cursive;
+    --font-cinzel: "Cinzel", serif;
+    --font-sacramento: "Sacramento", cursive;
+    --font-vt323: "VT323", monospace;
+    --font-fascinate: "Fascinate", display;
+    --font-syncopate: "Syncopate", sans-serif;
+    --font-cabin-sketch: "Cabin Sketch", cursive;
+    --font-rye: "Rye", display;
+    --font-permanent-marker: "Permanent Marker", cursive;
+    --font-creepster: "Creepster", display;
+    --font-aboreto: "Aboreto", display;
+    --font-barlow-condensed: "Barlow Condensed", sans-serif;
+    --font-alumni-collegiate: "Alumni Sans Collegiate One", sans-serif;
+    --font-platypi: "Platypi", serif;
+    --font-yesteryear: "Yesteryear", cursive;
+    --font-unifraktur: "UnifrakturMaguntia", serif;
+    --font-niconne: "Niconne", cursive;
+    --font-rubik-mono: "Rubik Mono One", monospace;
+    --font-teko: "Teko", sans-serif;
+    --font-monoton: "Monoton", display;
+    --font-cinzel-dec: "Cinzel Decorative", serif;
     --brand: oklch(0.585 0.233 277.117); /* Default Indigo */
     --brand-foreground: oklch(0.985 0 0);
     --background: oklch(1 0 0);
@@ -353,6 +393,127 @@
   --bg-image: url('https://www.transparenttextures.com/patterns/skulls.png');
   --bg-opacity: 0.1;
   --background: oklch(0.1 0.05 300);
+}
+
+[data-theme='gothic'] {
+  --brand: oklch(0.4 0.15 320);
+  --bg-image: url('https://www.transparenttextures.com/patterns/black-linen.png');
+  --bg-opacity: 0.5;
+  --background: oklch(0.08 0.02 320);
+}
+[data-theme='cyberpunk-yellow'] {
+  --brand: oklch(0.85 0.22 95);
+  --bg-image: url('https://www.transparenttextures.com/patterns/grid-me.png');
+  --bg-opacity: 0.25;
+  --background: oklch(0.05 0.01 95);
+}
+[data-theme='steampunk'] {
+  --brand: oklch(0.55 0.15 65);
+  --bg-image: url('https://www.transparenttextures.com/patterns/diagonal-striped-brick.png');
+  --bg-opacity: 0.3;
+  --background: oklch(0.12 0.04 65);
+}
+[data-theme='arctic'] {
+  --brand: oklch(0.85 0.12 210);
+  --bg-image: url('https://www.transparenttextures.com/patterns/subtle-zebra-3d.png');
+  --bg-opacity: 0.2;
+  --background: oklch(0.96 0.02 210);
+}
+[data-theme='toxic'] {
+  --brand: oklch(0.8 0.3 125);
+  --bg-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+  --bg-opacity: 0.4;
+  --background: oklch(0.06 0.02 125);
+}
+[data-theme='bubblegum'] {
+  --brand: oklch(0.75 0.22 340);
+  --bg-image: url('https://www.transparenttextures.com/patterns/circles.png');
+  --bg-opacity: 0.25;
+  --background: oklch(0.95 0.03 340);
+}
+[data-theme='marshmallow'] {
+  --brand: oklch(0.82 0.12 160);
+  --bg-image: url('https://www.transparenttextures.com/patterns/white-diamond-dark.png');
+  --bg-opacity: 0.15;
+  --background: oklch(0.97 0.02 160);
+}
+[data-theme='abyss'] {
+  --brand: oklch(0.3 0.15 240);
+  --bg-image: url('https://www.transparenttextures.com/patterns/black-thread.png');
+  --bg-opacity: 0.6;
+  --background: oklch(0.06 0.03 240);
+}
+[data-theme='firefly'] {
+  --brand: oklch(0.85 0.2 100);
+  --bg-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+  --bg-opacity: 0.5;
+  --background: oklch(0.1 0.05 140);
+}
+[data-theme='glitch'] {
+  --brand: oklch(0.65 0.25 20);
+  --bg-image: url('https://www.transparenttextures.com/patterns/grid-me.png');
+  --bg-opacity: 0.3;
+  --background: oklch(0.07 0.01 20);
+}
+[data-theme='cozy-fireplace'] {
+  --brand: oklch(0.65 0.2 40);
+  --bg-image: url('https://www.transparenttextures.com/patterns/vertical-cloth.png');
+  --bg-opacity: 0.35;
+  --background: oklch(0.14 0.04 40);
+}
+[data-theme='northern-lights'] {
+  --brand: oklch(0.75 0.22 170);
+  --bg-image: linear-gradient(135deg, #051937 0%, #004d7a 30%, #008793 60%, #00bf72 100%);
+  --bg-opacity: 0.4;
+  --background: oklch(0.08 0.03 170);
+}
+[data-theme='vintage-sepia'] {
+  --brand: oklch(0.55 0.1 75);
+  --bg-image: url('https://www.transparenttextures.com/patterns/old-paper.png');
+  --bg-opacity: 0.45;
+  --background: oklch(0.9 0.05 75);
+}
+[data-theme='graffiti'] {
+  --brand: oklch(0.7 0.25 320);
+  --bg-image: url('https://www.transparenttextures.com/patterns/brick-wall-dark.png');
+  --bg-opacity: 0.35;
+  --background: oklch(0.12 0.02 320);
+}
+[data-theme='matcha'] {
+  --brand: oklch(0.72 0.12 130);
+  --bg-image: url('https://www.transparenttextures.com/patterns/brilliant.png');
+  --bg-opacity: 0.25;
+  --background: oklch(0.94 0.03 130);
+}
+[data-theme='obsidian'] {
+  --brand: oklch(0.45 0.02 240);
+  --bg-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+  --bg-opacity: 0.6;
+  --background: oklch(0.07 0.01 240);
+}
+[data-theme='hyperlight'] {
+  --brand: oklch(0.8 0.25 195);
+  --bg-image: url('https://www.transparenttextures.com/patterns/grid-me.png');
+  --bg-opacity: 0.25;
+  --background: oklch(0.06 0.02 195);
+}
+[data-theme='peach-fuzz'] {
+  --brand: oklch(0.82 0.13 55);
+  --bg-image: url('https://www.transparenttextures.com/patterns/soft-wallpaper.png');
+  --bg-opacity: 0.3;
+  --background: oklch(0.97 0.02 55);
+}
+[data-theme='oasis'] {
+  --brand: oklch(0.75 0.15 190);
+  --bg-image: url('https://www.transparenttextures.com/patterns/waves.png');
+  --bg-opacity: 0.35;
+  --background: oklch(0.95 0.03 80);
+}
+[data-theme='nebula'] {
+  --brand: oklch(0.65 0.25 310);
+  --bg-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+  --bg-opacity: 0.55;
+  --background: oklch(0.08 0.04 310);
 }
 
 .dark {

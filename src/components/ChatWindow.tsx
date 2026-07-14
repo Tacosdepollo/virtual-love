@@ -61,18 +61,6 @@ export default function ChatWindow({
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const exportContainerRef = useRef<HTMLDivElement>(null);
-  const lastAutoPlayedId = useRef<string | null>(null);
-
-  // Auto-play voice for new assistant messages
-  useEffect(() => {
-    if (!autoPlayVoice || !personality.voiceConfig?.description) return;
-    
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === "assistant" && lastMessage.id !== lastAutoPlayedId.current) {
-      lastAutoPlayedId.current = lastMessage.id;
-      playSpeech(lastMessage.content, personality.voiceConfig.description, language);
-    }
-  }, [messages, autoPlayVoice, personality.voiceConfig]);
 
   useEffect(() => {
     if (scrollRef.current && !editingMessageId && !isSelectMode) {
@@ -436,20 +424,6 @@ export default function ChatWindow({
                             title={language === 'es' ? 'Regenerar' : 'Regenerate'}
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                        {/* Play Voice (Only for AI with Voice Config) */}
-                        {msg.role === "assistant" && personality.voiceConfig?.description && (
-                          <button
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              playSpeech(msg.content, personality.voiceConfig?.description || "", language); 
-                            }}
-                            className="p-1.5 rounded-full bg-zinc-900/80 border border-zinc-700 shadow-lg hover:bg-zinc-800 text-zinc-400 hover:text-[var(--brand)]"
-                            title={language === 'es' ? 'Reproducir' : 'Play'}
-                          >
-                            <Play className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>

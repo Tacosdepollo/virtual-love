@@ -9,7 +9,7 @@ async function run() {
   try {
     const mp3 = await openai.audio.speech.create({
       model: "qwen3-tts-flash",
-      voice: "longxiaochun",
+      voice: "longxiaochun" as any,
       input: "Today is a wonderful day to build something people love!",
     });
     console.log("Success! Audio length:", mp3.headers.get("content-length"));
